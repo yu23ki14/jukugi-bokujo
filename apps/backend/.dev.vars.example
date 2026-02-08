@@ -1,0 +1,5 @@
+# Local development environment variables
+# Copy this file to .dev.vars and fill in your values
+
+# Clerk (for authentication)
+CLERK_SECRET_KEY=your_clerk_secret_key_here

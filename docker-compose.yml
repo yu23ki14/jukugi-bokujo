@@ -1,0 +1,48 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: development
+    container_name: jukugi-bokujo-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount app directory for hot reload (React Router v7 uses app/ not src/)
+      - ./apps/frontend/app:/app/apps/frontend/app:ro
+      - ./apps/frontend/public:/app/apps/frontend/public:ro
+    environment:
+      - NODE_ENV=development
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8787}
+    stdin_open: true
+    tty: true
+    networks:
+      - jukugi-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: development
+    container_name: jukugi-bokujo-backend
+    ports:
+      - "8787:8787"
+    volumes:
+      # Only mount source code for hot reload
+      - ./apps/backend/src:/app/apps/backend/src:ro
+      - backend_wrangler:/app/apps/backend/.wrangler
+    environment:
+      - NODE_ENV=development
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
+    stdin_open: true
+    tty: true
+    networks:
+      - jukugi-network
+
+networks:
+  jukugi-network:
+    driver: bridge
+
+volumes:
+  backend_wrangler:

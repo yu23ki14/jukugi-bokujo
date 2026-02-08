@@ -1,0 +1,22 @@
+{
+  "name": "jukugi-bokujo-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for jukugi-bokujo project",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --filter \"./apps/*\" build",
+    "clean": "pnpm --parallel --filter \"./apps/*\" clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
