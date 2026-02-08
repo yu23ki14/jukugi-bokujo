@@ -34,14 +34,17 @@ const createKnowledgeRoute = createRoute({
 	security: [{ bearerAuth: [] }],
 	request: {
 		params: z.object({
-			agentId: z.string().uuid().openapi({
-				param: {
-					name: "agentId",
-					in: "path",
-				},
-				description: "Agent ID",
-				example: "123e4567-e89b-12d3-a456-426614174000",
-			}),
+			agentId: z
+				.string()
+				.uuid()
+				.openapi({
+					param: {
+						name: "agentId",
+						in: "path",
+					},
+					description: "Agent ID",
+					example: "123e4567-e89b-12d3-a456-426614174000",
+				}),
 		}),
 		body: {
 			content: {
@@ -161,14 +164,17 @@ const listKnowledgeRoute = createRoute({
 	security: [{ bearerAuth: [] }],
 	request: {
 		params: z.object({
-			agentId: z.string().uuid().openapi({
-				param: {
-					name: "agentId",
-					in: "path",
-				},
-				description: "Agent ID",
-				example: "123e4567-e89b-12d3-a456-426614174000",
-			}),
+			agentId: z
+				.string()
+				.uuid()
+				.openapi({
+					param: {
+						name: "agentId",
+						in: "path",
+					},
+					description: "Agent ID",
+					example: "123e4567-e89b-12d3-a456-426614174000",
+				}),
 		}),
 	},
 	responses: {

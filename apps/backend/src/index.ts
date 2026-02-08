@@ -120,7 +120,7 @@ app.get("/api/test-db", async (c) => {
 import { agentsRouter } from "./routes/agents";
 import { knowledgeRouter } from "./routes/knowledge";
 import { sessionsRouter } from "./routes/sessions";
-import { publicTopicsRouter, adminTopicsRouter } from "./routes/topics";
+import { adminTopicsRouter, publicTopicsRouter } from "./routes/topics";
 import { userInputsRouter } from "./routes/user-inputs";
 
 app.route("/api", publicTopicsRouter); // Public topics (no auth) - mount first

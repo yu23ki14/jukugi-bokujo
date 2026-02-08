@@ -8,6 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "jukugi-bokujo-db"
 database_id = "cf9812ad-a97b-4030-bb53-fbd8cf4b878d"
+migrations_dir = "migrations"
 
 # Cron Triggers
 # - Master Cron: every 6 hours (session generation)
@@ -18,6 +19,7 @@ crons = ["0 */6 * * *", "*/15 * * * *"]
 # Environment variables (use .dev.vars for local development)
 [vars]
 ENVIRONMENT = "development"
+TEST_MODE = "true"
 
 # Secrets (set via `wrangler secret put <KEY>` for production)
 # - CLERK_SECRET_KEY: Clerk API secret key

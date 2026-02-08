@@ -7,4 +7,5 @@ export type Bindings = {
 	CLERK_SECRET_KEY: string;
 	ANTHROPIC_API_KEY: string;
 	ENVIRONMENT: string;
+	TEST_MODE?: string;
 };

@@ -28,6 +28,14 @@ export const openapiAuth = createMiddleware<{ Bindings: Bindings; Variables: Aut
 
 		const token = authHeader.substring(7);
 
+		// TEST MODE: Accept mock tokens for testing
+		if (c.env.TEST_MODE === "true" && token.startsWith("mock-token-")) {
+			const userId = token.replace("mock-token-", "");
+			c.set("userId", userId);
+			await next();
+			return;
+		}
+
 		try {
 			// Verify JWT token with Clerk
 			const clerkSecretKey = c.env.CLERK_SECRET_KEY;
