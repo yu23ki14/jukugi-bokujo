@@ -1,7 +1,7 @@
 # Frontend Dockerfile for React Router v7 with pnpm workspace
 
 # Development stage
-FROM node:20-slim AS development
+FROM node:24-slim AS development
 
 # Enable corepack for pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
@@ -25,7 +25,7 @@ EXPOSE 5173
 CMD ["pnpm", "dev", "--host"]
 
 # Builder stage
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
@@ -47,7 +47,7 @@ WORKDIR /app/apps/frontend
 RUN pnpm build
 
 # Production stage
-FROM node:20-slim AS production
+FROM node:24-slim AS production
 
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 

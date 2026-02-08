@@ -1,18 +1,28 @@
 name = "jukugi-bokujo-backend"
 main = "src/index.ts"
-compatibility_date = "2024-12-01"
-node_compat = true
+compatibility_date = "2025-09-23"
+compatibility_flags = ["nodejs_compat"]
 
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
 database_name = "jukugi-bokujo-db"
-database_id = "" # Will be filled after running: wrangler d1 create jukugi-bokujo-db
+database_id = "cf9812ad-a97b-4030-bb53-fbd8cf4b878d"
 
-# Cron Triggers (example: run every 6 hours)
+# Cron Triggers
+# - Master Cron: every 6 hours (session generation)
+# - Turn Cron: every 15 minutes (turn processing)
 [triggers]
-crons = ["0 */6 * * *"]
+crons = ["0 */6 * * *", "*/15 * * * *"]
 
 # Environment variables (use .dev.vars for local development)
 [vars]
 ENVIRONMENT = "development"
+
+# Secrets (set via `wrangler secret put <KEY>` for production)
+# - CLERK_SECRET_KEY: Clerk API secret key
+# - ANTHROPIC_API_KEY: Anthropic API key for LLM integration
+#
+# Local development: use .dev.vars file
+# Production: wrangler secret put CLERK_SECRET_KEY
+#             wrangler secret put ANTHROPIC_API_KEY

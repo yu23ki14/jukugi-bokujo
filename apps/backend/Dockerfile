@@ -1,7 +1,7 @@
 # Backend Dockerfile
 
 # Development stage
-FROM node:20-slim AS development
+FROM node:24-slim AS development
 
 # Install required dependencies for workerd
 RUN apt-get update && apt-get install -y \
@@ -26,9 +26,13 @@ COPY apps/backend ./apps/backend
 
 WORKDIR /app/apps/backend
 
+# Copy and set permissions for entrypoint script
+COPY apps/backend/scripts/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 8787
 
-CMD ["pnpm", "dev"]
+CMD ["/docker-entrypoint.sh"]
 
 # Note: Production deployment for Cloudflare Workers is done via wrangler deploy
 # This Dockerfile is primarily for local development

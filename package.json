@@ -8,7 +8,8 @@
 		"build": "pnpm --filter \"./apps/*\" build",
 		"clean": "pnpm --parallel --filter \"./apps/*\" clean",
 		"biome:format": "biome format --write",
-		"biome:check": "biome check --write"
+		"biome:check": "biome check --write",
+		"typecheck": "pnpm --parallel --filter \"./apps/*\" typecheck"
 	},
 	"keywords": [],
 	"author": "",

@@ -60,30 +60,51 @@ export default function App() {
 		<div className="min-h-screen bg-gray-50">
 			<nav className="bg-white shadow">
 				<div className="container mx-auto px-4 py-4 flex justify-between items-center">
-					<div className="flex gap-4">
-						<Link to="/" className="text-blue-600 hover:text-blue-800">
-							Home
+					<div className="flex gap-6 items-center">
+						<Link to="/" className="text-xl font-bold text-blue-600 hover:text-blue-800">
+							熟議牧場
 						</Link>
 						{PUBLISHABLE_KEY && (
-							<SignedIn>
-								<Link to="/dashboard" className="text-blue-600 hover:text-blue-800">
-									Dashboard
+							<>
+								<SignedIn>
+									<Link to="/dashboard" className="text-gray-700 hover:text-blue-600">
+										Dashboard
+									</Link>
+									<Link to="/agents" className="text-gray-700 hover:text-blue-600">
+										Agents
+									</Link>
+									<Link to="/sessions" className="text-gray-700 hover:text-blue-600">
+										Sessions
+									</Link>
+								</SignedIn>
+								<Link to="/topics" className="text-gray-700 hover:text-blue-600">
+									Topics
 								</Link>
-							</SignedIn>
+							</>
 						)}
 					</div>
 					<div>
 						{PUBLISHABLE_KEY ? (
 							<>
 								<SignedOut>
-									<SignInButton mode="modal">
-										<button
-											type="button"
-											className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-										>
-											Sign In
-										</button>
-									</SignInButton>
+									<div className="flex gap-2">
+										<Link to="/signin">
+											<button
+												type="button"
+												className="text-blue-600 px-4 py-2 rounded hover:bg-blue-50"
+											>
+												Sign In
+											</button>
+										</Link>
+										<Link to="/signup">
+											<button
+												type="button"
+												className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+											>
+												Sign Up
+											</button>
+										</Link>
+									</div>
 								</SignedOut>
 								<SignedIn>
 									<UserButton />
