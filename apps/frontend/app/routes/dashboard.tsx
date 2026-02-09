@@ -1,61 +1,75 @@
-import { useAuth, useUser } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { Link } from "react-router";
 import { AgentCard } from "../components/AgentCard";
 import { ProtectedRoute } from "../components/ProtectedRoute";
-import { createApiClient } from "../lib/api";
-import type { Agent, Session, Topic } from "../lib/types";
+import {
+	type AgentSummary,
+	type SessionSummary,
+	useGetApiAgents,
+	useGetApiSessions,
+} from "../hooks/backend";
 
 export function meta() {
 	return [{ title: "Dashboard - Jukugi Bokujo" }];
 }
 
-interface SessionListItem extends Session {
-	topic: { id: string; title: string };
-}
-
 export default function Dashboard() {
 	const { user } = useUser();
-	const { getToken } = useAuth();
-	const [agents, setAgents] = useState<Agent[]>([]);
-	const [activeSessions, setActiveSessions] = useState<SessionListItem[]>([]);
-	const [stats, setStats] = useState({
-		totalAgents: 0,
-		totalSessions: 0,
-		activeSessions: 0,
-	});
-	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		async function fetchDashboardData() {
-			try {
-				setLoading(true);
-				const api = createApiClient(getToken);
+	// Fetch agents using Orval-generated React Query hooks
+	const { data: agentsData, isLoading: agentsLoading, error: agentsError } = useGetApiAgents();
 
-				const [agentsData, sessionsData, activeSessionsData] = await Promise.all([
-					api.get<{ agents: Agent[] }>("/api/agents"),
-					api.get<{ sessions: SessionListItem[]; total: number }>("/api/sessions?limit=100"),
-					api.get<{ sessions: SessionListItem[]; total: number }>(
-						"/api/sessions?status=active&limit=5",
-					),
-				]);
+	// Fetch all sessions for stats
+	const {
+		data: allSessionsData,
+		isLoading: allSessionsLoading,
+		error: allSessionsError,
+	} = useGetApiSessions({ limit: 100 });
 
-				setAgents(agentsData.agents.slice(0, 5));
-				setActiveSessions(activeSessionsData.sessions);
-				setStats({
-					totalAgents: agentsData.agents.length,
-					totalSessions: sessionsData.total,
-					activeSessions: activeSessionsData.total,
-				});
-			} catch (err) {
-				console.error("Failed to load dashboard data:", err);
-			} finally {
-				setLoading(false);
-			}
-		}
+	// Fetch active sessions
+	const {
+		data: activeSessionsData,
+		isLoading: activeSessionsLoading,
+		error: activeSessionsError,
+	} = useGetApiSessions({ status: "active", limit: 5 });
 
-		fetchDashboardData();
-	}, [getToken]);
+	// Compute loading and data states
+	const loading = agentsLoading || allSessionsLoading || activeSessionsLoading;
+	const hasError = agentsError || allSessionsError || activeSessionsError;
+
+	// Extract data safely with proper null checks
+	const agentsResponse = !agentsError && agentsData?.data ? agentsData.data : null;
+	const allSessionsResponse =
+		!allSessionsError && allSessionsData?.data ? allSessionsData.data : null;
+	const activeSessionsResponse =
+		!activeSessionsError && activeSessionsData?.data ? activeSessionsData.data : null;
+
+	const agents =
+		agentsResponse && "agents" in agentsResponse ? agentsResponse.agents.slice(0, 5) : [];
+
+	const activeSessions =
+		activeSessionsResponse && "sessions" in activeSessionsResponse
+			? activeSessionsResponse.sessions
+			: [];
+
+	const stats = {
+		totalAgents: agentsResponse && "agents" in agentsResponse ? agentsResponse.agents.length : 0,
+		totalSessions:
+			allSessionsResponse && "total" in allSessionsResponse ? allSessionsResponse.total : 0,
+		activeSessions:
+			activeSessionsResponse && "total" in activeSessionsResponse
+				? activeSessionsResponse.total
+				: 0,
+	};
+
+	// Handle errors
+	if (hasError) {
+		console.error("Failed to load dashboard data:", {
+			agentsError,
+			allSessionsError,
+			activeSessionsError,
+		});
+	}
 
 	return (
 		<ProtectedRoute>
@@ -144,7 +158,7 @@ export default function Dashboard() {
 								</div>
 							) : (
 								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-									{agents.map((agent) => (
+									{agents.map((agent: AgentSummary) => (
 										<AgentCard key={agent.id} agent={agent} />
 									))}
 								</div>
@@ -168,7 +182,7 @@ export default function Dashboard() {
 								</div>
 							) : (
 								<div className="space-y-4">
-									{activeSessions.map((session) => (
+									{activeSessions.map((session: SessionSummary) => (
 										<Link
 											key={session.id}
 											to={`/sessions/${session.id}`}

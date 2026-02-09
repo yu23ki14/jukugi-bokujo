@@ -6,10 +6,11 @@
 		"build": "react-router build",
 		"dev": "react-router dev",
 		"start": "react-router-serve ./build/server/index.js",
-		"typecheck": "react-router typegen && tsc --noEmit"
+		"typecheck": "react-router typegen && tsc --noEmit",
+		"generate:api": "orval --config orval.config.ts"
 	},
 	"dependencies": {
-		"@clerk/clerk-react": "^5.21.5",
+		"@clerk/clerk-react": "^5.60.0",
 		"@react-router/node": "7.12.0",
 		"@react-router/serve": "7.12.0",
 		"@tanstack/react-query": "^5.90.20",

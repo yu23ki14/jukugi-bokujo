@@ -1,58 +1,40 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Session, Topic } from "../../lib/types";
+import { type SessionSummary, useGetApiSessions } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Sessions - Jukugi Bokujo" }];
 }
 
-interface SessionListItem extends Session {
-	topic: { id: string; title: string };
-}
-
 export default function SessionsIndex() {
-	const { getToken } = useAuth();
 	const [searchParams, setSearchParams] = useSearchParams();
-	const [sessions, setSessions] = useState<SessionListItem[]>([]);
-	const [total, setTotal] = useState(0);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 
 	const status = searchParams.get("status") || "all";
-	const limit = Number.parseInt(searchParams.get("limit") || "20");
-	const offset = Number.parseInt(searchParams.get("offset") || "0");
+	const limit = Number.parseInt(searchParams.get("limit") || "20", 10);
+	const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
 
-	useEffect(() => {
-		async function fetchSessions() {
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
+	// Build query parameters
+	const queryParams: {
+		status?: "active" | "completed";
+		limit?: number;
+		offset?: number | null;
+	} = {
+		limit,
+		offset,
+	};
 
-				const params = new URLSearchParams();
-				if (status !== "all") params.append("status", status);
-				params.append("limit", limit.toString());
-				params.append("offset", offset.toString());
+	// Only set status if it's a valid API value
+	if (status === "active" || status === "completed") {
+		queryParams.status = status;
+	}
 
-				const response = await api.get<{
-					sessions: SessionListItem[];
-					total: number;
-				}>(`/api/sessions?${params.toString()}`);
+	const { data: sessionsData, isLoading: loading, error } = useGetApiSessions(queryParams);
 
-				setSessions(response.sessions);
-				setTotal(response.total);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load sessions");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchSessions();
-	}, [getToken, status, limit, offset]);
+	// Extract data safely
+	const sessionsResponse = !error && sessionsData?.data ? sessionsData.data : null;
+	const sessions =
+		sessionsResponse && "sessions" in sessionsResponse ? sessionsResponse.sessions : [];
+	const total = sessionsResponse && "total" in sessionsResponse ? sessionsResponse.total : 0;
 
 	function handleStatusChange(newStatus: string) {
 		setSearchParams({ status: newStatus, limit: limit.toString(), offset: "0" });
@@ -130,7 +112,9 @@ export default function SessionsIndex() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load sessions"}
+						</p>
 					</div>
 				)}
 
@@ -151,7 +135,7 @@ export default function SessionsIndex() {
 				{!loading && !error && sessions.length > 0 && (
 					<div>
 						<div className="space-y-4 mb-6">
-							{sessions.map((session) => (
+							{sessions.map((session: SessionSummary) => (
 								<Link
 									key={session.id}
 									to={`/sessions/${session.id}`}

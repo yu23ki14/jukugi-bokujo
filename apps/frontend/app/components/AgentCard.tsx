@@ -1,8 +1,8 @@
 import { Link } from "react-router";
-import type { Agent } from "../lib/types";
+import type { AgentSummary } from "../hooks/backend";
 
 interface AgentCardProps {
-	agent: Agent;
+	agent: AgentSummary;
 	onClick?: () => void;
 }
 

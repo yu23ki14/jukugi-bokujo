@@ -1,14 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMockAuthHeaders, createUnauthHeaders } from "./helpers/auth-mock";
-import {
-	countAgentInputs,
-	getUserInput,
-} from "./helpers/database";
-import {
-	TEST_USER_INPUTS,
-	createUserInputRequestBody,
-} from "./helpers/test-data";
+import { getUserInput } from "./helpers/database";
+import { createUserInputRequestBody, TEST_USER_INPUTS } from "./helpers/test-data";
 
 const MOCK_USERS = {
 	USER_1: "user_test1234567890",
@@ -18,7 +12,8 @@ const MOCK_USERS = {
 // Helper functions compatible with actual schema
 async function createTestUser(db: D1Database, userId: string) {
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare("INSERT INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
+	await db
+		.prepare("INSERT INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
 		.bind(userId, now, now)
 		.run();
 }
@@ -32,9 +27,12 @@ async function createTestAgent(db: D1Database, agentId: string, userId: string, 
 		version: 1,
 	};
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare(
-		"INSERT INTO agents (id, user_id, name, persona, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-	).bind(agentId, userId, name, JSON.stringify(persona), now, now).run();
+	await db
+		.prepare(
+			"INSERT INTO agents (id, user_id, name, persona, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		)
+		.bind(agentId, userId, name, JSON.stringify(persona), now, now)
+		.run();
 }
 
 async function createTestUserInput(
@@ -46,9 +44,12 @@ async function createTestUserInput(
 	appliedAt?: number | null,
 ) {
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare(
-		"INSERT INTO user_inputs (id, agent_id, input_type, content, applied_at, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-	).bind(inputId, agentId, inputType, content, appliedAt ?? null, now).run();
+	await db
+		.prepare(
+			"INSERT INTO user_inputs (id, agent_id, input_type, content, applied_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		)
+		.bind(inputId, agentId, inputType, content, appliedAt ?? null, now)
+		.run();
 }
 
 describe("User Inputs API", () => {
@@ -92,7 +93,9 @@ describe("User Inputs API", () => {
 		`).run();
 
 		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)").run();
-		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_inputs_agent_id ON user_inputs(agent_id)").run();
+		await env.DB.prepare(
+			"CREATE INDEX IF NOT EXISTS idx_user_inputs_agent_id ON user_inputs(agent_id)",
+		).run();
 
 		// Clean only the tables we created
 		await env.DB.batch([
@@ -112,22 +115,16 @@ describe("User Inputs API", () => {
 
 	describe("POST /api/agents/:agentId/inputs - Create User Input", () => {
 		it("should create direction input for owned agent", async () => {
-			const requestBody = createUserInputRequestBody(
-				"direction",
-				TEST_USER_INPUTS.direction[0],
-			);
+			const requestBody = createUserInputRequestBody("direction", TEST_USER_INPUTS.direction[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(201);
 
@@ -147,22 +144,16 @@ describe("User Inputs API", () => {
 		});
 
 		it("should create feedback input for owned agent", async () => {
-			const requestBody = createUserInputRequestBody(
-				"feedback",
-				TEST_USER_INPUTS.feedback[0],
-			);
+			const requestBody = createUserInputRequestBody("feedback", TEST_USER_INPUTS.feedback[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(201);
 
@@ -172,20 +163,17 @@ describe("User Inputs API", () => {
 		});
 
 		it("should trim whitespace from content", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						input_type: "direction",
-						content: "  Whitespace Content  ",
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					input_type: "direction",
+					content: "  Whitespace Content  ",
+				}),
+			});
 
 			expect(response.status).toBe(201);
 			const data = await response.json();
@@ -194,22 +182,16 @@ describe("User Inputs API", () => {
 
 		it("should return 404 for non-existent agent", async () => {
 			const fakeAgentId = "99999999-0000-4000-8000-000000000999";
-			const requestBody = createUserInputRequestBody(
-				"direction",
-				TEST_USER_INPUTS.direction[0],
-			);
+			const requestBody = createUserInputRequestBody("direction", TEST_USER_INPUTS.direction[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${fakeAgentId}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${fakeAgentId}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(404);
 			const data = await response.json();
@@ -217,22 +199,16 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 403 for agent owned by different user", async () => {
-			const requestBody = createUserInputRequestBody(
-				"direction",
-				TEST_USER_INPUTS.direction[0],
-			);
+			const requestBody = createUserInputRequestBody("direction", TEST_USER_INPUTS.direction[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_2_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_2_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(403);
 			const data = await response.json();
@@ -240,22 +216,16 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 401 without authentication", async () => {
-			const requestBody = createUserInputRequestBody(
-				"direction",
-				TEST_USER_INPUTS.direction[0],
-			);
+			const requestBody = createUserInputRequestBody("direction", TEST_USER_INPUTS.direction[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createUnauthHeaders(),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createUnauthHeaders(),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
@@ -263,20 +233,17 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 400 with invalid input_type", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						input_type: "invalid_type",
-						content: "Some content",
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					input_type: "invalid_type",
+					content: "Some content",
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -284,20 +251,17 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 400 with empty content", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						input_type: "direction",
-						content: "",
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					input_type: "direction",
+					content: "",
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -306,20 +270,17 @@ describe("User Inputs API", () => {
 
 		it("should return 400 with content exceeding max length", async () => {
 			const longContent = "a".repeat(5001); // Max is 5000
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						input_type: "direction",
-						content: longContent,
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					input_type: "direction",
+					content: longContent,
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -327,22 +288,16 @@ describe("User Inputs API", () => {
 		});
 
 		it("should set applied_at to null initially", async () => {
-			const requestBody = createUserInputRequestBody(
-				"direction",
-				TEST_USER_INPUTS.direction[0],
-			);
+			const requestBody = createUserInputRequestBody("direction", TEST_USER_INPUTS.direction[0]);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(201);
 			const data = await response.json();
@@ -373,13 +328,10 @@ describe("User Inputs API", () => {
 				TEST_USER_INPUTS.feedback[0],
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(200);
 
@@ -398,13 +350,10 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return empty array for agent with no inputs", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(200);
 
@@ -416,13 +365,10 @@ describe("User Inputs API", () => {
 
 		it("should return 404 for non-existent agent", async () => {
 			const fakeAgentId = "99999999-0000-4000-8000-000000000999";
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${fakeAgentId}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${fakeAgentId}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(404);
 			const data = await response.json();
@@ -430,13 +376,10 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 403 for agent owned by different user", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_2_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_2_ID}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(403);
 			const data = await response.json();
@@ -444,13 +387,10 @@ describe("User Inputs API", () => {
 		});
 
 		it("should return 401 without authentication", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createUnauthHeaders(),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "GET",
+				headers: createUnauthHeaders(),
+			});
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
@@ -459,39 +399,22 @@ describe("User Inputs API", () => {
 
 		it("should order by created_at DESC", async () => {
 			// Create inputs with slight time difference
-			await createTestUserInput(
-				env.DB,
-				INPUT_1_ID,
-				AGENT_1_ID,
-				"direction",
-				"First input",
-			);
+			await createTestUserInput(env.DB, INPUT_1_ID, AGENT_1_ID, "direction", "First input");
 			// Add small delay to ensure different timestamps
-			await new Promise(resolve => setTimeout(resolve, 10));
-			await createTestUserInput(
-				env.DB,
-				INPUT_2_ID,
-				AGENT_1_ID,
-				"feedback",
-				"Second input",
-			);
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			await createTestUserInput(env.DB, INPUT_2_ID, AGENT_1_ID, "feedback", "Second input");
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			const data = await response.json();
 			expect(data.inputs.length).toBeGreaterThanOrEqual(2);
 
 			// Check that inputs are sorted by created_at DESC
 			for (let i = 0; i < data.inputs.length - 1; i++) {
-				expect(data.inputs[i].created_at).toBeGreaterThanOrEqual(
-					data.inputs[i + 1].created_at,
-				);
+				expect(data.inputs[i].created_at).toBeGreaterThanOrEqual(data.inputs[i + 1].created_at);
 			}
 		});
 
@@ -506,13 +429,10 @@ describe("User Inputs API", () => {
 				appliedTimestamp,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/inputs`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/inputs`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			const data = await response.json();
 			expect(data.inputs.length).toBe(1);

@@ -1,4 +1,6 @@
-import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
 	isRouteErrorResponse,
 	Link,
@@ -11,6 +13,17 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { ClerkAuthProvider } from "./components/ClerkAuthProvider";
+
+// Create a client
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			staleTime: 60 * 1000, // 1 minute
+			retry: 1,
+		},
+	},
+});
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -41,13 +54,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 				<Links />
 			</head>
 			<body>
-				{PUBLISHABLE_KEY ? (
-					<ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-						{children}
-					</ClerkProvider>
-				) : (
-					<>{children}</>
-				)}
+				<QueryClientProvider client={queryClient}>
+					{PUBLISHABLE_KEY ? (
+						<ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+							<ClerkAuthProvider>{children}</ClerkAuthProvider>
+						</ClerkProvider>
+					) : (
+						children
+					)}
+					<ReactQueryDevtools initialIsOpen={false} />
+				</QueryClientProvider>
 				<ScrollRestoration />
 				<Scripts />
 			</body>

@@ -1,38 +1,18 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { AgentCard } from "../../components/AgentCard";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Agent } from "../../lib/types";
+import { type AgentSummary, useGetApiAgents } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "My Agents - Jukugi Bokujo" }];
 }
 
 export default function AgentsIndex() {
-	const { getToken } = useAuth();
-	const [agents, setAgents] = useState<Agent[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const { data: agentsData, isLoading: loading, error } = useGetApiAgents();
 
-	useEffect(() => {
-		async function fetchAgents() {
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-				const response = await api.get<{ agents: Agent[] }>("/api/agents");
-				setAgents(response.agents);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load agents");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchAgents();
-	}, [getToken]);
+	// Extract agents safely
+	const agentsResponse = !error && agentsData?.data ? agentsData.data : null;
+	const agents = agentsResponse && "agents" in agentsResponse ? agentsResponse.agents : [];
 
 	return (
 		<ProtectedRoute>
@@ -56,7 +36,9 @@ export default function AgentsIndex() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load agents"}
+						</p>
 						<p className="text-red-600 text-sm mt-2">
 							Make sure the backend API is running and accessible.
 						</p>
@@ -77,7 +59,7 @@ export default function AgentsIndex() {
 
 				{!loading && !error && agents.length > 0 && (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-						{agents.map((agent) => (
+						{agents.map((agent: AgentSummary) => (
 							<AgentCard key={agent.id} agent={agent} />
 						))}
 					</div>

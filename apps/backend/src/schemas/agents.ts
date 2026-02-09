@@ -9,17 +9,25 @@ import { z } from "@hono/zod-openapi";
  */
 export const AgentPersonaSchema = z
 	.object({
-		interests: z.array(z.string()).openapi({
-			description: "Agent's areas of interest",
-			example: ["technology", "environment", "social justice"],
-		}),
-		values: z.array(z.string()).openapi({
+		core_values: z.array(z.string()).openapi({
 			description: "Agent's core values",
 			example: ["fairness", "sustainability", "innovation"],
 		}),
 		thinking_style: z.string().openapi({
 			description: "Agent's thinking and communication style",
 			example: "Analytical and data-driven, prefers concrete examples",
+		}),
+		personality_traits: z.array(z.string()).openapi({
+			description: "Agent's personality traits",
+			example: ["curious", "empathetic", "systematic"],
+		}),
+		background: z.string().openapi({
+			description: "Agent's background and context",
+			example: "A researcher with 10 years of experience in climate science",
+		}),
+		version: z.number().int().openapi({
+			description: "Persona version number",
+			example: 1,
 		}),
 	})
 	.openapi("AgentPersona");

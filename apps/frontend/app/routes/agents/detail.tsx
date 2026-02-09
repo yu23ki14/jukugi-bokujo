@@ -1,9 +1,6 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Agent } from "../../lib/types";
+import { useDeleteApiAgentsId, useGetApiAgentsId } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Agent Detail - Jukugi Bokujo" }];
@@ -11,32 +8,13 @@ export function meta() {
 
 export default function AgentDetail() {
 	const { id } = useParams();
-	const { getToken } = useAuth();
 	const navigate = useNavigate();
-	const [agent, setAgent] = useState<Agent | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [deleting, setDeleting] = useState(false);
 
-	useEffect(() => {
-		async function fetchAgent() {
-			if (!id) return;
+	const { data: agentData, isLoading: loading, error } = useGetApiAgentsId(id ?? "");
+	const deleteAgentMutation = useDeleteApiAgentsId();
 
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-				const data = await api.get<Agent>(`/api/agents/${id}`);
-				setAgent(data);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load agent");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchAgent();
-	}, [id, getToken]);
+	// Extract agent safely with type narrowing
+	const agent = !error && agentData?.data && "name" in agentData.data ? agentData.data : null;
 
 	async function handleDelete() {
 		if (!id || !agent) return;
@@ -48,13 +26,10 @@ export default function AgentDetail() {
 		if (!confirmed) return;
 
 		try {
-			setDeleting(true);
-			const api = createApiClient(getToken);
-			await api.delete(`/api/agents/${id}`);
+			await deleteAgentMutation.mutateAsync({ id });
 			navigate("/agents");
 		} catch (err) {
 			alert(err instanceof Error ? err.message : "Failed to delete agent");
-			setDeleting(false);
 		}
 	}
 
@@ -70,7 +45,9 @@ export default function AgentDetail() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load agent"}
+						</p>
 					</div>
 				)}
 
@@ -83,10 +60,10 @@ export default function AgentDetail() {
 							</div>
 							<button
 								onClick={handleDelete}
-								disabled={deleting}
+								disabled={deleteAgentMutation.isPending}
 								className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-400 transition"
 							>
-								{deleting ? "Deleting..." : "Delete Agent"}
+								{deleteAgentMutation.isPending ? "Deleting..." : "Delete Agent"}
 							</button>
 						</div>
 

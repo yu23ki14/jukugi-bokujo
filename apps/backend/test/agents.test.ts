@@ -63,10 +63,14 @@ describe("Agents API", () => {
 
 		// Create test users
 		const now = Math.floor(Date.now() / 1000);
-		await env.DB.prepare("INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
+		await env.DB.prepare(
+			"INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)",
+		)
 			.bind(TEST_USER_ID, now, now)
 			.run();
-		await env.DB.prepare("INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
+		await env.DB.prepare(
+			"INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)",
+		)
 			.bind(OTHER_USER_ID, now, now)
 			.run();
 	});
@@ -255,9 +259,7 @@ describe("Agents API", () => {
 
 			// Check that agents are sorted by created_at DESC
 			for (let i = 0; i < data.agents.length - 1; i++) {
-				expect(data.agents[i].created_at).toBeGreaterThanOrEqual(
-					data.agents[i + 1].created_at,
-				);
+				expect(data.agents[i].created_at).toBeGreaterThanOrEqual(data.agents[i + 1].created_at);
 			}
 		});
 

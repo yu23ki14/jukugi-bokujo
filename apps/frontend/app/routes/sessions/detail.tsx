@@ -1,10 +1,8 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { SessionTimeline } from "../../components/SessionTimeline";
-import { createApiClient } from "../../lib/api";
-import type { JudgeVerdict, SessionDetail, Turn } from "../../lib/types";
+import { useGetApiSessionsId, useGetApiSessionsIdTurns } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Session Detail - Jukugi Bokujo" }];
@@ -12,46 +10,41 @@ export function meta() {
 
 export default function SessionDetailPage() {
 	const { id } = useParams();
-	const { getToken } = useAuth();
-	const [session, setSession] = useState<SessionDetail | null>(null);
-	const [turns, setTurns] = useState<Turn[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 
+	const {
+		data: sessionData,
+		isLoading: sessionLoading,
+		error: sessionError,
+		refetch: refetchSession,
+	} = useGetApiSessionsId(id ?? "");
+
+	const {
+		data: turnsData,
+		isLoading: turnsLoading,
+		error: turnsError,
+		refetch: refetchTurns,
+	} = useGetApiSessionsIdTurns(id ?? "");
+
+	// Extract data with type narrowing
+	const session =
+		!sessionError && sessionData?.data && "topic" in sessionData.data ? sessionData.data : null;
+	const turnsResponse = !turnsError && turnsData?.data ? turnsData.data : null;
+	const turns = turnsResponse && "turns" in turnsResponse ? turnsResponse.turns : [];
+
+	const loading = sessionLoading || turnsLoading;
+	const error = sessionError || turnsError;
+
+	// Auto-refresh for active sessions every 15 seconds
 	useEffect(() => {
-		async function fetchSession() {
-			if (!id) return;
+		if (session?.status === "active") {
+			const interval = setInterval(() => {
+				refetchSession();
+				refetchTurns();
+			}, 15000);
 
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-
-				const [sessionData, turnsData] = await Promise.all([
-					api.get<SessionDetail>(`/api/sessions/${id}`),
-					api.get<{ turns: Turn[] }>(`/api/sessions/${id}/turns`),
-				]);
-
-				setSession(sessionData);
-				setTurns(turnsData.turns);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load session");
-			} finally {
-				setLoading(false);
-			}
+			return () => clearInterval(interval);
 		}
-
-		fetchSession();
-
-		// Auto-refresh for active sessions every 15 seconds
-		const interval = setInterval(() => {
-			if (session?.status === "active") {
-				fetchSession();
-			}
-		}, 15000);
-
-		return () => clearInterval(interval);
-	}, [id, getToken, session?.status]);
+	}, [session?.status, refetchSession, refetchTurns]);
 
 	function getStatusBadge(status: string) {
 		const badges = {
@@ -75,7 +68,9 @@ export default function SessionDetailPage() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load session"}
+						</p>
 					</div>
 				)}
 
@@ -102,7 +97,9 @@ export default function SessionDetailPage() {
 										<span className="text-gray-600">
 											Turn {session.current_turn} / {session.max_turns}
 										</span>
-										<span className="text-gray-600">{session.participant_count} participants</span>
+										<span className="text-gray-600">
+											{session.participants.length} participants
+										</span>
 									</div>
 								</div>
 							</div>
@@ -146,11 +143,42 @@ export default function SessionDetailPage() {
 							</div>
 						)}
 
-						{/* Judge Verdict (completed sessions) */}
+						{/* Session Analysis (completed sessions) */}
 						{session.status === "completed" && session.judge_verdict && (
 							<div className="bg-white rounded-lg shadow p-6 mb-6">
-								<h2 className="text-xl font-bold mb-4">AI Judge Verdict</h2>
-								<JudgeVerdictDisplay verdict={session.judge_verdict} />
+								<h2 className="text-xl font-bold mb-4">Session Analysis</h2>
+								<div className="space-y-4">
+									<div>
+										<h3 className="font-semibold text-gray-700 mb-2">Summary</h3>
+										<p className="text-gray-600">{session.judge_verdict.summary}</p>
+									</div>
+
+									{session.judge_verdict.key_points.length > 0 && (
+										<div>
+											<h3 className="font-semibold text-gray-700 mb-2">Key Points</h3>
+											<ul className="list-disc list-inside space-y-1">
+												{session.judge_verdict.key_points.map((point, idx) => (
+													<li key={idx} className="text-gray-600">
+														{point}
+													</li>
+												))}
+											</ul>
+										</div>
+									)}
+
+									{session.judge_verdict.remaining_disagreements.length > 0 && (
+										<div>
+											<h3 className="font-semibold text-gray-700 mb-2">Remaining Disagreements</h3>
+											<ul className="list-disc list-inside space-y-1">
+												{session.judge_verdict.remaining_disagreements.map((disagreement, idx) => (
+													<li key={idx} className="text-gray-600">
+														{disagreement}
+													</li>
+												))}
+											</ul>
+										</div>
+									)}
+								</div>
 							</div>
 						)}
 
@@ -175,62 +203,5 @@ export default function SessionDetailPage() {
 				)}
 			</div>
 		</ProtectedRoute>
-	);
-}
-
-function JudgeVerdictDisplay({ verdict }: { verdict: JudgeVerdict }) {
-	return (
-		<div className="space-y-4">
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-				<ScoreCard label="Quality" score={verdict.quality_score} />
-				<ScoreCard label="Cooperation" score={verdict.cooperation_score} />
-				<ScoreCard label="Convergence" score={verdict.convergence_score} />
-				<ScoreCard label="Novelty" score={verdict.novelty_score} />
-			</div>
-
-			<div>
-				<h3 className="font-semibold text-gray-700 mb-2">Summary</h3>
-				<p className="text-gray-600">{verdict.summary}</p>
-			</div>
-
-			{verdict.highlights && verdict.highlights.length > 0 && (
-				<div>
-					<h3 className="font-semibold text-gray-700 mb-2">Highlights</h3>
-					<ul className="list-disc list-inside space-y-1">
-						{verdict.highlights.map((highlight, idx) => (
-							<li key={idx} className="text-gray-600">
-								{highlight}
-							</li>
-						))}
-					</ul>
-				</div>
-			)}
-
-			{verdict.consensus && (
-				<div>
-					<h3 className="font-semibold text-gray-700 mb-2">Consensus</h3>
-					<p className="text-gray-600">{verdict.consensus}</p>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function ScoreCard({ label, score }: { label: string; score: number }) {
-	const percentage = (score / 10) * 100;
-	const color =
-		percentage >= 70 ? "bg-green-500" : percentage >= 40 ? "bg-yellow-500" : "bg-red-500";
-
-	return (
-		<div className="bg-gray-50 rounded-lg p-4">
-			<p className="text-sm text-gray-600 mb-1">{label}</p>
-			<p className="text-2xl font-bold mb-2">
-				{score}
-				<span className="text-sm text-gray-500">/10</span>
-			</p>
-			<div className="w-full bg-gray-200 rounded-full h-2">
-				<div className={`${color} h-2 rounded-full`} style={{ width: `${percentage}%` }} />
-			</div>
-		</div>
 	);
 }

@@ -125,10 +125,7 @@ export function createKnowledgeRequestBody(title: string, content: string) {
 /**
  * Create test request body for user input creation
  */
-export function createUserInputRequestBody(
-	inputType: "direction" | "feedback",
-	content: string,
-) {
+export function createUserInputRequestBody(inputType: "direction" | "feedback", content: string) {
 	return {
 		input_type: inputType,
 		content: content.trim(),

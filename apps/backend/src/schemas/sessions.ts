@@ -25,6 +25,16 @@ export const JudgeVerdictSchema = z
 	.openapi("JudgeVerdict");
 
 /**
+ * Session status enum
+ */
+export const SessionStatusEnum = z.enum(["pending", "active", "completed", "cancelled"]);
+
+/**
+ * Turn status enum
+ */
+export const TurnStatusEnum = z.enum(["pending", "processing", "completed", "failed"]);
+
+/**
  * List sessions query parameters schema
  */
 export const ListSessionsQuerySchema = z.object({
@@ -65,8 +75,8 @@ export const SessionSummarySchema = z
 			.openapi({
 				description: "Topic information",
 			}),
-		status: z.string().openapi({
-			description: "Session status",
+		status: SessionStatusEnum.openapi({
+			description: "Session status (pending | active | completed | cancelled)",
 			example: "active",
 		}),
 		current_turn: z.number().int().openapi({
@@ -154,8 +164,8 @@ export const GetSessionResponseSchema = z
 			.openapi({
 				description: "Topic information",
 			}),
-		status: z.string().openapi({
-			description: "Session status",
+		status: SessionStatusEnum.openapi({
+			description: "Session status (pending | active | completed | cancelled)",
 			example: "active",
 		}),
 		current_turn: z.number().int().openapi({
@@ -228,8 +238,8 @@ export const TurnSchema = z
 			description: "Turn number",
 			example: 1,
 		}),
-		status: z.string().openapi({
-			description: "Turn status",
+		status: TurnStatusEnum.openapi({
+			description: "Turn status (pending | processing | completed | failed)",
 			example: "completed",
 		}),
 		statements: z.array(StatementSchema).openapi({

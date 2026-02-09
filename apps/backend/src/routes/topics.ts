@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { getAuthUserId, openapiAuth } from "../middleware/openapi-auth";
+import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
 	CreateTopicRequestSchema,
@@ -21,7 +21,7 @@ const publicTopics = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Admin topics router (with authentication)
 const adminTopics = new OpenAPIHono<{ Bindings: Bindings }>();
-adminTopics.use("/*", openapiAuth);
+adminTopics.use("/*", clerkAuth);
 
 // ============================================================================
 // GET /api/topics - List active topics (public, no auth required)

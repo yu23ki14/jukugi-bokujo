@@ -5,6 +5,11 @@
 import { z } from "@hono/zod-openapi";
 
 /**
+ * Topic status enum
+ */
+export const TopicStatusEnum = z.enum(["active", "archived"]);
+
+/**
  * Topic summary schema (for list responses)
  */
 export const TopicSummarySchema = z
@@ -21,8 +26,8 @@ export const TopicSummarySchema = z
 			description: "Topic description",
 			example: "Discuss implementation of renewable energy policies...",
 		}),
-		status: z.string().openapi({
-			description: "Topic status",
+		status: TopicStatusEnum.openapi({
+			description: "Topic status (active | archived)",
 			example: "active",
 		}),
 		created_at: z.number().int().openapi({
@@ -60,8 +65,8 @@ export const GetTopicResponseSchema = z
 			description: "Topic description",
 			example: "Discuss implementation of renewable energy policies...",
 		}),
-		status: z.string().openapi({
-			description: "Topic status",
+		status: TopicStatusEnum.openapi({
+			description: "Topic status (active | archived)",
 			example: "active",
 		}),
 		created_at: z.number().int().openapi({

@@ -17,6 +17,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.14",
 		"@types/node": "^22.10.5",
+		"orval": "^8.2.0",
 		"typescript": "^5.7.3"
 	},
 	"engines": {

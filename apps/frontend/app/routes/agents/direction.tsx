@@ -1,9 +1,11 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Agent, UserInput } from "../../lib/types";
+import {
+	useGetApiAgentsAgentIdInputs,
+	useGetApiAgentsId,
+	usePostApiAgentsAgentIdInputs,
+} from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Agent Direction - Jukugi Bokujo" }];
@@ -11,42 +13,33 @@ export function meta() {
 
 export default function AgentDirection() {
 	const { id } = useParams();
-	const { getToken } = useAuth();
-	const [agent, setAgent] = useState<Agent | null>(null);
-	const [inputs, setInputs] = useState<UserInput[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+
+	// Fetch agent and inputs data
+	const {
+		data: agentData,
+		isLoading: agentLoading,
+		error: agentError,
+	} = useGetApiAgentsId(id ?? "");
+	const {
+		data: inputsData,
+		isLoading: inputsLoading,
+		error: inputsError,
+		refetch: refetchInputs,
+	} = useGetApiAgentsAgentIdInputs(id ?? "");
+
+	const createInputMutation = usePostApiAgentsAgentIdInputs();
+
+	// Extract data with type narrowing
+	const agent = !agentError && agentData?.data && "name" in agentData.data ? agentData.data : null;
+	const inputsResponse = !inputsError && inputsData?.data ? inputsData.data : null;
+	const inputs = inputsResponse && "inputs" in inputsResponse ? inputsResponse.inputs : [];
+
+	const loading = agentLoading || inputsLoading;
+	const error = agentError || inputsError;
 
 	// Form state
 	const [inputType, setInputType] = useState<"direction" | "feedback">("direction");
 	const [content, setContent] = useState("");
-	const [submitting, setSubmitting] = useState(false);
-
-	useEffect(() => {
-		async function fetchData() {
-			if (!id) return;
-
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-
-				const [agentData, inputsData] = await Promise.all([
-					api.get<Agent>(`/api/agents/${id}`),
-					api.get<{ inputs: UserInput[] }>(`/api/agents/${id}/inputs`),
-				]);
-
-				setAgent(agentData);
-				setInputs(inputsData.inputs);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load data");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchData();
-	}, [id, getToken]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -56,19 +49,18 @@ export default function AgentDirection() {
 		}
 
 		try {
-			setSubmitting(true);
-			const api = createApiClient(getToken);
-			const newInput = await api.post<UserInput>(`/api/agents/${id}/inputs`, {
-				input_type: inputType,
-				content: content.trim(),
+			await createInputMutation.mutateAsync({
+				agentId: id,
+				data: {
+					input_type: inputType,
+					content: content.trim(),
+				},
 			});
 
-			setInputs([newInput, ...inputs]);
 			setContent("");
+			refetchInputs();
 		} catch (err) {
 			alert(err instanceof Error ? err.message : "Failed to add input");
-		} finally {
-			setSubmitting(false);
 		}
 	}
 
@@ -84,7 +76,9 @@ export default function AgentDirection() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load data"}
+						</p>
 					</div>
 				)}
 
@@ -123,7 +117,7 @@ export default function AgentDirection() {
 											value="direction"
 											checked={inputType === "direction"}
 											onChange={(e) => setInputType(e.target.value as "direction" | "feedback")}
-											disabled={submitting}
+											disabled={createInputMutation.isPending}
 											className="mr-2"
 										/>
 										<span>Direction</span>
@@ -135,7 +129,7 @@ export default function AgentDirection() {
 											value="feedback"
 											checked={inputType === "feedback"}
 											onChange={(e) => setInputType(e.target.value as "direction" | "feedback")}
-											disabled={submitting}
+											disabled={createInputMutation.isPending}
 											className="mr-2"
 										/>
 										<span>Feedback</span>
@@ -158,7 +152,7 @@ export default function AgentDirection() {
 											: "e.g., Your recent arguments were too aggressive. Try to be more collaborative..."
 									}
 									maxLength={1000}
-									disabled={submitting}
+									disabled={createInputMutation.isPending}
 									required
 								/>
 								<p className="mt-1 text-xs text-gray-500">{content.length}/1000 characters</p>
@@ -166,10 +160,10 @@ export default function AgentDirection() {
 
 							<button
 								type="submit"
-								disabled={submitting || !content.trim()}
+								disabled={createInputMutation.isPending || !content.trim()}
 								className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 transition"
 							>
-								{submitting
+								{createInputMutation.isPending
 									? "Adding..."
 									: `Add ${inputType === "direction" ? "Direction" : "Feedback"}`}
 							</button>

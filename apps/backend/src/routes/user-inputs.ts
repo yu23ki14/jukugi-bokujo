@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { getAuthUserId, openapiAuth } from "../middleware/openapi-auth";
+import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
 	CreateUserInputRequestSchema,
@@ -19,7 +19,7 @@ import { generateUUID } from "../utils/uuid";
 const userInputs = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Apply authentication to all routes
-userInputs.use("/*", openapiAuth);
+userInputs.use("/*", clerkAuth);
 
 // ============================================================================
 // POST /agents/:agentId/inputs - Add user input (direction/feedback)

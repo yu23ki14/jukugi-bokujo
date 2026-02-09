@@ -9,7 +9,7 @@ import { z } from "@hono/zod-openapi";
  */
 export const CreateUserInputRequestSchema = z
 	.object({
-		input_type: z.enum(["direction", "feedback"]).openapi({
+		input_type: z.enum(["direction", "knowledge", "feedback"]).openapi({
 			description: "Type of user input",
 			example: "direction",
 		}),

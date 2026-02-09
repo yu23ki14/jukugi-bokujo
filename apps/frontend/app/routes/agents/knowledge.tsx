@@ -1,9 +1,12 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Agent, KnowledgeEntry } from "../../lib/types";
+import {
+	useDeleteApiKnowledgeId,
+	useGetApiAgentsAgentIdKnowledge,
+	useGetApiAgentsId,
+	usePostApiAgentsAgentIdKnowledge,
+} from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Agent Knowledge - Jukugi Bokujo" }];
@@ -11,43 +14,36 @@ export function meta() {
 
 export default function AgentKnowledge() {
 	const { id } = useParams();
-	const { getToken } = useAuth();
-	const [agent, setAgent] = useState<Agent | null>(null);
-	const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+
+	// Fetch agent and knowledge data
+	const {
+		data: agentData,
+		isLoading: agentLoading,
+		error: agentError,
+	} = useGetApiAgentsId(id ?? "");
+	const {
+		data: knowledgeData,
+		isLoading: knowledgeLoading,
+		error: knowledgeError,
+		refetch: refetchKnowledge,
+	} = useGetApiAgentsAgentIdKnowledge(id ?? "");
+
+	const createKnowledgeMutation = usePostApiAgentsAgentIdKnowledge();
+	const deleteKnowledgeMutation = useDeleteApiKnowledgeId();
+
+	// Extract data with type narrowing
+	const agent = !agentError && agentData?.data && "name" in agentData.data ? agentData.data : null;
+	const knowledgeResponse = !knowledgeError && knowledgeData?.data ? knowledgeData.data : null;
+	const knowledge =
+		knowledgeResponse && "knowledge" in knowledgeResponse ? knowledgeResponse.knowledge : [];
+
+	const loading = agentLoading || knowledgeLoading;
+	const error = agentError || knowledgeError;
 
 	// Form state
 	const [showForm, setShowForm] = useState(false);
 	const [title, setTitle] = useState("");
 	const [content, setContent] = useState("");
-	const [submitting, setSubmitting] = useState(false);
-
-	useEffect(() => {
-		async function fetchData() {
-			if (!id) return;
-
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-
-				const [agentData, knowledgeData] = await Promise.all([
-					api.get<Agent>(`/api/agents/${id}`),
-					api.get<{ knowledge: KnowledgeEntry[] }>(`/api/agents/${id}/knowledge`),
-				]);
-
-				setAgent(agentData);
-				setKnowledge(knowledgeData.knowledge);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load data");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchData();
-	}, [id, getToken]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -57,21 +53,20 @@ export default function AgentKnowledge() {
 		}
 
 		try {
-			setSubmitting(true);
-			const api = createApiClient(getToken);
-			const newEntry = await api.post<KnowledgeEntry>(`/api/agents/${id}/knowledge`, {
-				title: title.trim(),
-				content: content.trim(),
+			await createKnowledgeMutation.mutateAsync({
+				agentId: id,
+				data: {
+					title: title.trim(),
+					content: content.trim(),
+				},
 			});
 
-			setKnowledge([newEntry, ...knowledge]);
 			setTitle("");
 			setContent("");
 			setShowForm(false);
+			refetchKnowledge();
 		} catch (err) {
 			alert(err instanceof Error ? err.message : "Failed to add knowledge");
-		} finally {
-			setSubmitting(false);
 		}
 	}
 
@@ -80,9 +75,8 @@ export default function AgentKnowledge() {
 		if (!confirmed) return;
 
 		try {
-			const api = createApiClient(getToken);
-			await api.delete(`/api/knowledge/${knowledgeId}`);
-			setKnowledge(knowledge.filter((k) => k.id !== knowledgeId));
+			await deleteKnowledgeMutation.mutateAsync({ id: knowledgeId });
+			refetchKnowledge();
 		} catch (err) {
 			alert(err instanceof Error ? err.message : "Failed to delete knowledge");
 		}
@@ -100,7 +94,9 @@ export default function AgentKnowledge() {
 
 				{error && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4">
-						<p className="text-red-700">{error}</p>
+						<p className="text-red-700">
+							{error instanceof Error ? error.message : "Failed to load data"}
+						</p>
 					</div>
 				)}
 
@@ -143,7 +139,7 @@ export default function AgentKnowledge() {
 										className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
 										placeholder="e.g., Climate Change Facts, Economic Policy Basics"
 										maxLength={200}
-										disabled={submitting}
+										disabled={createKnowledgeMutation.isPending}
 										required
 									/>
 								</div>
@@ -162,7 +158,7 @@ export default function AgentKnowledge() {
 										className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
 										placeholder="Enter detailed knowledge content..."
 										maxLength={2000}
-										disabled={submitting}
+										disabled={createKnowledgeMutation.isPending}
 										required
 									/>
 									<p className="mt-1 text-xs text-gray-500">{content.length}/2000 characters</p>
@@ -171,10 +167,10 @@ export default function AgentKnowledge() {
 								<div className="flex gap-4">
 									<button
 										type="submit"
-										disabled={submitting || !title.trim() || !content.trim()}
+										disabled={createKnowledgeMutation.isPending || !title.trim() || !content.trim()}
 										className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 transition"
 									>
-										{submitting ? "Adding..." : "Add Knowledge"}
+										{createKnowledgeMutation.isPending ? "Adding..." : "Add Knowledge"}
 									</button>
 									<button
 										type="button"
@@ -183,7 +179,7 @@ export default function AgentKnowledge() {
 											setTitle("");
 											setContent("");
 										}}
-										disabled={submitting}
+										disabled={createKnowledgeMutation.isPending}
 										className="bg-gray-200 text-gray-700 px-6 py-2 rounded hover:bg-gray-300 transition"
 									>
 										Cancel

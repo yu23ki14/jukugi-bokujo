@@ -1,4 +1,4 @@
-import type { Turn } from "../lib/types";
+import type { Turn } from "../hooks/backend";
 
 interface SessionTimelineProps {
 	turns: Turn[];
@@ -60,16 +60,6 @@ export function SessionTimeline({ turns }: SessionTimelineProps) {
 									<p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
 										{statement.content}
 									</p>
-									{statement.thinking_process && (
-										<details className="mt-3">
-											<summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-												思考プロセスを見る
-											</summary>
-											<div className="mt-2 p-3 bg-gray-50 rounded text-sm text-gray-600 whitespace-pre-wrap">
-												{statement.thinking_process}
-											</div>
-										</details>
-									)}
 								</div>
 							))
 						) : (

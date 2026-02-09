@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { getAuthUserId, openapiAuth } from "../middleware/openapi-auth";
+import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
 	GetSessionResponseSchema,
@@ -18,7 +18,7 @@ import { handleDatabaseError, notFound } from "../utils/errors";
 const sessions = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Apply authentication to all routes
-sessions.use("/*", openapiAuth);
+sessions.use("/*", clerkAuth);
 
 // ============================================================================
 // GET /api/sessions - List sessions (user's agents participated in)

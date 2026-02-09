@@ -1,52 +1,36 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { createApiClient } from "../../lib/api";
-import type { Session, Topic } from "../../lib/types";
+import { type SessionSummary, useGetApiSessions, useGetApiTopicsId } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Topic Detail - Jukugi Bokujo" }];
 }
 
-interface SessionListItem extends Session {
-	topic: { id: string; title: string };
-}
-
 export default function TopicDetail() {
 	const { id } = useParams();
-	const { getToken } = useAuth();
-	const [topic, setTopic] = useState<Topic | null>(null);
-	const [sessions, setSessions] = useState<SessionListItem[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		async function fetchData() {
-			if (!id) return;
+	const {
+		data: topicData,
+		isLoading: topicLoading,
+		error: topicError,
+	} = useGetApiTopicsId(id ?? "");
 
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
+	const {
+		data: sessionsData,
+		isLoading: sessionsLoading,
+		error: sessionsError,
+	} = useGetApiSessions({ limit: 50 });
 
-				const [topicData, sessionsData] = await Promise.all([
-					api.get<Topic>(`/api/topics/${id}`),
-					api.get<{ sessions: SessionListItem[]; total: number }>(
-						`/api/sessions?topic_id=${id}&limit=50`,
-					),
-				]);
+	// Extract data with type narrowing
+	const topic = !topicError && topicData?.data && "title" in topicData.data ? topicData.data : null;
+	const sessionsResponse = !sessionsError && sessionsData?.data ? sessionsData.data : null;
+	const allSessions =
+		sessionsResponse && "sessions" in sessionsResponse ? sessionsResponse.sessions : [];
 
-				setTopic(topicData);
-				setSessions(sessionsData.sessions);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load topic");
-			} finally {
-				setLoading(false);
-			}
-		}
+	// Filter sessions by topic ID on client side
+	const sessions = allSessions.filter((session) => session.topic.id === id);
 
-		fetchData();
-	}, [id, getToken]);
+	const loading = topicLoading || sessionsLoading;
+	const error = topicError || sessionsError;
 
 	function getStatusBadge(status: string) {
 		const badges = {
@@ -69,7 +53,9 @@ export default function TopicDetail() {
 
 			{error && (
 				<div className="bg-red-50 border-l-4 border-red-400 p-4">
-					<p className="text-red-700">{error}</p>
+					<p className="text-red-700">
+						{error instanceof Error ? error.message : "Failed to load topic"}
+					</p>
 				</div>
 			)}
 
@@ -113,7 +99,7 @@ export default function TopicDetail() {
 						</div>
 					) : (
 						<div className="space-y-4">
-							{sessions.map((session) => (
+							{sessions.map((session: SessionSummary) => (
 								<Link
 									key={session.id}
 									to={`/sessions/${session.id}`}
@@ -136,10 +122,6 @@ export default function TopicDetail() {
 											</div>
 										</div>
 									</div>
-
-									{session.summary && (
-										<p className="text-gray-600 text-sm mb-2 line-clamp-2">{session.summary}</p>
-									)}
 
 									<div className="text-xs text-gray-500 flex gap-4">
 										{session.started_at && (

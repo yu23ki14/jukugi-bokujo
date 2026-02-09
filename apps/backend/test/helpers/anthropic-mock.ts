@@ -66,7 +66,7 @@ export function createMockAnthropicResponse(content: string) {
 export function setupAnthropicMock() {
 	const originalFetch = globalThis.fetch;
 
-	globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = typeof input === "string" ? input : input.toString();
 
 		// Intercept Anthropic API calls
@@ -92,7 +92,7 @@ export function setupAnthropicMock() {
 
 		// Pass through other requests
 		return originalFetch(input, init);
-	} as typeof fetch;
+	}) as typeof fetch;
 }
 
 /**
@@ -103,7 +103,7 @@ export function setupAnthropicMock() {
 export function setupAnthropicMockWithFailure() {
 	const originalFetch = globalThis.fetch;
 
-	globalThis.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+	globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
 		const url = typeof input === "string" ? input : input.toString();
 
 		// Intercept Anthropic API calls and return error
@@ -118,5 +118,5 @@ export function setupAnthropicMockWithFailure() {
 
 		// Pass through other requests
 		return originalFetch(input, _init);
-	} as typeof fetch;
+	}) as typeof fetch;
 }

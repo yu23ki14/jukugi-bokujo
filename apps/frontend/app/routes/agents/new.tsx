@@ -1,20 +1,18 @@
-import { useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { createApiClient } from "../../lib/api";
-import type { Agent } from "../../lib/types";
+import { usePostApiAgents } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Create Agent - Jukugi Bokujo" }];
 }
 
 export default function NewAgent() {
-	const { getToken } = useAuth();
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
-	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const createAgentMutation = usePostApiAgents();
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -25,18 +23,16 @@ export default function NewAgent() {
 		}
 
 		try {
-			setLoading(true);
 			setError(null);
 
-			const api = createApiClient(getToken);
-			const agent = await api.post<Agent>("/api/agents", { name: name.trim() });
+			const response = await createAgentMutation.mutateAsync({ data: { name: name.trim() } });
 
 			// Redirect to agent detail page
-			navigate(`/agents/${agent.id}`);
+			if (response.data && "id" in response.data) {
+				navigate(`/agents/${response.data.id}`);
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create agent");
-		} finally {
-			setLoading(false);
 		}
 	}
 
@@ -68,7 +64,7 @@ export default function NewAgent() {
 							className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
 							placeholder="e.g., Thoughtful Citizen, Climate Advocate, Tech Enthusiast"
 							maxLength={100}
-							disabled={loading}
+							disabled={createAgentMutation.isPending}
 						/>
 						<p className="mt-1 text-xs text-gray-500">
 							Choose a descriptive name that reflects the agent's role or perspective
@@ -84,15 +80,15 @@ export default function NewAgent() {
 					<div className="flex gap-4">
 						<button
 							type="submit"
-							disabled={loading || !name.trim()}
+							disabled={createAgentMutation.isPending || !name.trim()}
 							className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
 						>
-							{loading ? "Creating..." : "Create Agent"}
+							{createAgentMutation.isPending ? "Creating..." : "Create Agent"}
 						</button>
 						<button
 							type="button"
 							onClick={() => navigate("/agents")}
-							disabled={loading}
+							disabled={createAgentMutation.isPending}
 							className="bg-gray-200 text-gray-700 px-6 py-2 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
 						>
 							Cancel

@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { getAuthUserId, openapiAuth } from "../middleware/openapi-auth";
+import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema, SuccessResponseSchema } from "../schemas/common";
 import {
 	CreateKnowledgeRequestSchema,
@@ -19,7 +19,7 @@ import { generateUUID } from "../utils/uuid";
 const knowledge = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Apply authentication to all routes
-knowledge.use("/*", openapiAuth);
+knowledge.use("/*", clerkAuth);
 
 // ============================================================================
 // POST /agents/:agentId/knowledge - Add knowledge to agent

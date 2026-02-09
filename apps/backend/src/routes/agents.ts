@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { getAuthUserId, openapiAuth } from "../middleware/openapi-auth";
+import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import {
 	CreateAgentRequestSchema,
 	CreateAgentResponseSchema,
@@ -24,7 +24,7 @@ import { generateUUID } from "../utils/uuid";
 const agents = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Apply authentication to all routes
-agents.use("/*", openapiAuth);
+agents.use("/*", clerkAuth);
 
 // ============================================================================
 // POST /api/agents - Create new agent
@@ -85,6 +85,8 @@ const createAgentRoute = createRoute({
 agents.openapi(createAgentRoute, async (c) => {
 	const userId = getAuthUserId(c);
 	const body = c.req.valid("json");
+
+	console.log("Create agent request body:", JSON.stringify(body));
 
 	try {
 		// Ensure user exists in database

@@ -1,36 +1,16 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { createApiClient } from "../../lib/api";
-import type { Topic } from "../../lib/types";
+import { type TopicSummary, useGetApiTopics } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Topics - Jukugi Bokujo" }];
 }
 
 export default function TopicsIndex() {
-	const { getToken } = useAuth();
-	const [topics, setTopics] = useState<Topic[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const { data: topicsData, isLoading: loading, error } = useGetApiTopics();
 
-	useEffect(() => {
-		async function fetchTopics() {
-			try {
-				setLoading(true);
-				setError(null);
-				const api = createApiClient(getToken);
-				const response = await api.get<{ topics: Topic[] }>("/api/topics");
-				setTopics(response.topics);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load topics");
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchTopics();
-	}, [getToken]);
+	// Extract topics safely
+	const topicsResponse = !error && topicsData?.data ? topicsData.data : null;
+	const topics = topicsResponse && "topics" in topicsResponse ? topicsResponse.topics : [];
 
 	return (
 		<div>
@@ -52,7 +32,9 @@ export default function TopicsIndex() {
 
 			{error && (
 				<div className="bg-red-50 border-l-4 border-red-400 p-4">
-					<p className="text-red-700">{error}</p>
+					<p className="text-red-700">
+						{error instanceof Error ? error.message : "Failed to load topics"}
+					</p>
 				</div>
 			)}
 
@@ -64,7 +46,7 @@ export default function TopicsIndex() {
 
 			{!loading && !error && topics.length > 0 && (
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					{topics.map((topic) => (
+					{topics.map((topic: TopicSummary) => (
 						<Link
 							key={topic.id}
 							to={`/topics/${topic.id}`}

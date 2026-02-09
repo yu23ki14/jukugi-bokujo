@@ -1,14 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMockAuthHeaders, createUnauthHeaders } from "./helpers/auth-mock";
-import {
-	countAgentKnowledge,
-	getKnowledge,
-} from "./helpers/database";
-import {
-	TEST_KNOWLEDGE,
-	createKnowledgeRequestBody,
-} from "./helpers/test-data";
+import { countAgentKnowledge, getKnowledge } from "./helpers/database";
+import { createKnowledgeRequestBody, TEST_KNOWLEDGE } from "./helpers/test-data";
 
 const MOCK_USERS = {
 	USER_1: "user_test1234567890",
@@ -18,7 +12,8 @@ const MOCK_USERS = {
 // Helper functions compatible with actual schema
 async function createTestUser(db: D1Database, userId: string) {
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare("INSERT INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
+	await db
+		.prepare("INSERT INTO users (id, created_at, updated_at) VALUES (?, ?, ?)")
 		.bind(userId, now, now)
 		.run();
 }
@@ -32,16 +27,28 @@ async function createTestAgent(db: D1Database, agentId: string, userId: string, 
 		version: 1,
 	};
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare(
-		"INSERT INTO agents (id, user_id, name, persona, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-	).bind(agentId, userId, name, JSON.stringify(persona), now, now).run();
+	await db
+		.prepare(
+			"INSERT INTO agents (id, user_id, name, persona, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		)
+		.bind(agentId, userId, name, JSON.stringify(persona), now, now)
+		.run();
 }
 
-async function createTestKnowledge(db: D1Database, knowledgeId: string, agentId: string, title: string, content: string) {
+async function createTestKnowledge(
+	db: D1Database,
+	knowledgeId: string,
+	agentId: string,
+	title: string,
+	content: string,
+) {
 	const now = Math.floor(Date.now() / 1000);
-	await db.prepare(
-		"INSERT INTO knowledge_entries (id, agent_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-	).bind(knowledgeId, agentId, title, content, now, now).run();
+	await db
+		.prepare(
+			"INSERT INTO knowledge_entries (id, agent_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		)
+		.bind(knowledgeId, agentId, title, content, now, now)
+		.run();
 }
 
 describe("Knowledge API", () => {
@@ -86,7 +93,9 @@ describe("Knowledge API", () => {
 		`).run();
 
 		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)").run();
-		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_knowledge_agent_id ON knowledge_entries(agent_id)").run();
+		await env.DB.prepare(
+			"CREATE INDEX IF NOT EXISTS idx_knowledge_agent_id ON knowledge_entries(agent_id)",
+		).run();
 
 		// Clean only the tables we created
 		await env.DB.batch([
@@ -111,17 +120,14 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(201);
 
@@ -139,20 +145,17 @@ describe("Knowledge API", () => {
 		});
 
 		it("should trim whitespace from title and content", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						title: "  Whitespace Title  ",
-						content: "  Whitespace Content  ",
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					title: "  Whitespace Title  ",
+					content: "  Whitespace Content  ",
+				}),
+			});
 
 			expect(response.status).toBe(201);
 			const data = await response.json();
@@ -167,17 +170,14 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${fakeAgentId}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${fakeAgentId}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(404);
 			const data = await response.json();
@@ -190,17 +190,14 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_2_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_2_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(403);
 			const data = await response.json();
@@ -213,17 +210,14 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createUnauthHeaders(),
-					},
-					body: JSON.stringify(requestBody),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createUnauthHeaders(),
 				},
-			);
+				body: JSON.stringify(requestBody),
+			});
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
@@ -231,20 +225,17 @@ describe("Knowledge API", () => {
 		});
 
 		it("should return 400 with empty title", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						title: "",
-						content: TEST_KNOWLEDGE[0].content,
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					title: "",
+					content: TEST_KNOWLEDGE[0].content,
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -252,20 +243,17 @@ describe("Knowledge API", () => {
 		});
 
 		it("should return 400 with empty content", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						title: TEST_KNOWLEDGE[0].title,
-						content: "",
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					title: TEST_KNOWLEDGE[0].title,
+					content: "",
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -274,20 +262,17 @@ describe("Knowledge API", () => {
 
 		it("should return 400 with title exceeding max length", async () => {
 			const longTitle = "a".repeat(201); // Assuming max is 200
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						title: longTitle,
-						content: TEST_KNOWLEDGE[0].content,
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					title: longTitle,
+					content: TEST_KNOWLEDGE[0].content,
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -296,20 +281,17 @@ describe("Knowledge API", () => {
 
 		it("should return 400 with content exceeding max length", async () => {
 			const longContent = "a".repeat(10001); // Max is 10000
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...createMockAuthHeaders(MOCK_USERS.USER_1),
-					},
-					body: JSON.stringify({
-						title: TEST_KNOWLEDGE[0].title,
-						content: longContent,
-					}),
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...createMockAuthHeaders(MOCK_USERS.USER_1),
 				},
-			);
+				body: JSON.stringify({
+					title: TEST_KNOWLEDGE[0].title,
+					content: longContent,
+				}),
+			});
 
 			expect(response.status).toBe(400);
 			const data = await response.json();
@@ -335,13 +317,10 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[1].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(200);
 
@@ -359,13 +338,10 @@ describe("Knowledge API", () => {
 		});
 
 		it("should return empty array for agent with no knowledge", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(200);
 
@@ -377,13 +353,10 @@ describe("Knowledge API", () => {
 
 		it("should return 404 for non-existent agent", async () => {
 			const fakeAgentId = "99999999-0000-4000-8000-000000000999";
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${fakeAgentId}/knowledge`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${fakeAgentId}/knowledge`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(404);
 			const data = await response.json();
@@ -391,13 +364,10 @@ describe("Knowledge API", () => {
 		});
 
 		it("should return 403 for agent owned by different user", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_2_ID}/knowledge`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_2_ID}/knowledge`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(403);
 			const data = await response.json();
@@ -405,13 +375,10 @@ describe("Knowledge API", () => {
 		});
 
 		it("should return 401 without authentication", async () => {
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "GET",
-					headers: createUnauthHeaders(),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "GET",
+				headers: createUnauthHeaders(),
+			});
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
@@ -428,7 +395,7 @@ describe("Knowledge API", () => {
 				"First content",
 			);
 			// Add small delay to ensure different timestamps
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise((resolve) => setTimeout(resolve, 10));
 			await createTestKnowledge(
 				env.DB,
 				KNOWLEDGE_2_ID,
@@ -437,13 +404,10 @@ describe("Knowledge API", () => {
 				"Second content",
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/agents/${AGENT_1_ID}/knowledge`,
-				{
-					method: "GET",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/agents/${AGENT_1_ID}/knowledge`, {
+				method: "GET",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			const data = await response.json();
 			expect(data.knowledge.length).toBeGreaterThanOrEqual(2);
@@ -467,13 +431,10 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/knowledge/${KNOWLEDGE_1_ID}`,
-				{
-					method: "DELETE",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/knowledge/${KNOWLEDGE_1_ID}`, {
+				method: "DELETE",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(200);
 
@@ -509,13 +470,10 @@ describe("Knowledge API", () => {
 			);
 
 			// Try to delete with USER_1's credentials
-			const response = await SELF.fetch(
-				`http://example.com/api/knowledge/${KNOWLEDGE_2_ID}`,
-				{
-					method: "DELETE",
-					headers: createMockAuthHeaders(MOCK_USERS.USER_1),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/knowledge/${KNOWLEDGE_2_ID}`, {
+				method: "DELETE",
+				headers: createMockAuthHeaders(MOCK_USERS.USER_1),
+			});
 
 			expect(response.status).toBe(403);
 			const data = await response.json();
@@ -535,13 +493,10 @@ describe("Knowledge API", () => {
 				TEST_KNOWLEDGE[0].content,
 			);
 
-			const response = await SELF.fetch(
-				`http://example.com/api/knowledge/${KNOWLEDGE_1_ID}`,
-				{
-					method: "DELETE",
-					headers: createUnauthHeaders(),
-				},
-			);
+			const response = await SELF.fetch(`http://example.com/api/knowledge/${KNOWLEDGE_1_ID}`, {
+				method: "DELETE",
+				headers: createUnauthHeaders(),
+			});
 
 			expect(response.status).toBe(401);
 			const data = await response.json();
