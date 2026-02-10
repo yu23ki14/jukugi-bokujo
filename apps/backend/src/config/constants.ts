@@ -35,6 +35,11 @@ export const MAX_AGENTS_PER_USER = 4;
 export const SESSION_PARTICIPANT_COUNT = 4;
 
 /**
+ * Maximum number of sessions an agent can participate in per cron cycle
+ */
+export const MAX_SESSIONS_PER_AGENT = 2;
+
+/**
  * Maximum number of turns per session
  */
 export const SESSION_MAX_TURNS = 10;

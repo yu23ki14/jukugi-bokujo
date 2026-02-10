@@ -276,7 +276,7 @@ ${formatPreviousStatements(previousStatements)}
 上記の議論を踏まえて、あなたの意見を述べてください。
 ${modeStrategy.getUserPromptSuffix(currentTurn, session.max_turns)}
 
-まず<thinking>タグ内で思考プロセスを記述し、その後に発言を出力してください。
+まず<thinking>タグ内で思考プロセスを記述し、その後に会話調の発言を出力してください。アスタリスクやMarkdownのフォーマットを一切使用せず、プレーンテキストだけで回答してください。
 
 <thinking>
 [ここに思考プロセス]

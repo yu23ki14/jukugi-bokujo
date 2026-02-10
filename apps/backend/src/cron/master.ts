@@ -1,9 +1,20 @@
 /**
  * Master Cron - Session Generation (every 6 hours)
  * Creates new deliberation sessions for active topics
+ *
+ * Algorithm:
+ * 1. Fetch all active topics and agents
+ * 2. Compute session count S = clamp(T, ceil(N/P), floor(N*M/P))
+ * 3. Distribute topics evenly across sessions
+ * 4. Assign agents in 2 phases: guarantee round + fill round
+ * 5. Create sessions in DB
  */
 
-import { AGENT_ACTIVITY_THRESHOLD_DAYS, SESSION_PARTICIPANT_COUNT } from "../config/constants";
+import {
+	AGENT_ACTIVITY_THRESHOLD_DAYS,
+	MAX_SESSIONS_PER_AGENT,
+	SESSION_PARTICIPANT_COUNT,
+} from "../config/constants";
 import { getAllModes } from "../config/session-modes/registry";
 import { generateSessionStrategy } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
@@ -19,16 +30,61 @@ export async function runMasterCron(env: Bindings): Promise<void> {
 	console.log("Master Cron started:", new Date().toISOString());
 
 	try {
-		// 1. Get active topics
 		const activeTopics = await getActiveTopics(env.DB);
 		console.log(`Found ${activeTopics.length} active topics`);
 
-		for (const topic of activeTopics) {
+		if (activeTopics.length === 0) {
+			console.log("No active topics, skipping session creation");
+			return;
+		}
+
+		const agents = await getAllActiveAgents(env.DB);
+		console.log(`Found ${agents.length} active agents`);
+
+		if (agents.length === 0) {
+			console.log("No active agents, skipping session creation");
+			return;
+		}
+
+		const N = agents.length;
+		const T = activeTopics.length;
+		const P = SESSION_PARTICIPANT_COUNT;
+		const M = MAX_SESSIONS_PER_AGENT;
+
+		const S = computeSessionCount(N, P, M, T);
+		console.log(`Session count: ${S} (N=${N}, T=${T}, P=${P}, M=${M})`);
+
+		const topicAssignments = distributeTopics(S, activeTopics);
+		const agentAssignments = assignAgents(agents, S, P, M);
+
+		// Log agent participation counts
+		const participationCount = new Map<string, number>();
+		for (const sessionAgentIds of agentAssignments) {
+			for (const id of sessionAgentIds) {
+				participationCount.set(id, (participationCount.get(id) ?? 0) + 1);
+			}
+		}
+		for (const agent of agents) {
+			console.log(
+				`Agent ${agent.name} (${agent.id}): ${participationCount.get(agent.id) ?? 0} sessions`,
+			);
+		}
+
+		for (let i = 0; i < S; i++) {
+			const topic = topicAssignments[i];
+			const sessionAgentIds = agentAssignments[i];
+			const sessionAgents = sessionAgentIds
+				.map((id) => agents.find((a) => a.id === id))
+				.filter((a): a is Agent => a !== undefined);
+
+			console.log(
+				`Creating session ${i + 1}/${S}: topic="${topic.title}", agents=[${sessionAgents.map((a) => a.name).join(", ")}]`,
+			);
+
 			try {
-				await createSessionForTopic(env, topic);
+				await createSession(env, topic.id, sessionAgents);
 			} catch (error) {
-				console.error(`Failed to create session for topic ${topic.id}:`, error);
-				// Continue with next topic even if one fails
+				console.error(`Failed to create session ${i + 1}:`, error);
 			}
 		}
 
@@ -56,12 +112,127 @@ async function getActiveTopics(db: D1Database): Promise<Topic[]> {
 }
 
 /**
- * Create a new session for a topic
+ * Get all active agents (no LIMIT, no ORDER BY RANDOM)
+ * Shuffling is done at the application level for fair scheduling.
  */
-async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void> {
-	console.log(`Creating session for topic: ${topic.title}`);
+async function getAllActiveAgents(db: D1Database): Promise<Agent[]> {
+	const thresholdTimestamp = getTimestampDaysAgo(AGENT_ACTIVITY_THRESHOLD_DAYS);
 
-	// 2. Create new session
+	const result = await db
+		.prepare(
+			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
+       FROM agents a
+       LEFT JOIN feedbacks f ON a.id = f.agent_id
+       LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
+       WHERE f.created_at >= ?
+          OR ke.created_at >= ?
+          OR a.created_at >= ?
+       GROUP BY a.id`,
+		)
+		.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp)
+		.all<Agent>();
+
+	return result.results;
+}
+
+/**
+ * Compute the number of sessions to create.
+ * S = clamp(T, ceil(N/P), floor(N*M/P))
+ * If N < P, force S = 1.
+ */
+function computeSessionCount(N: number, P: number, M: number, T: number): number {
+	if (N < P) return 1;
+
+	const lower = Math.ceil(N / P);
+	const upper = Math.floor((N * M) / P);
+	return Math.max(lower, Math.min(T, upper));
+}
+
+/**
+ * Distribute S sessions across T topics as evenly as possible.
+ * Returns an array of length S where each element is the topic for that session.
+ */
+function distributeTopics(S: number, topics: Topic[]): Topic[] {
+	const shuffledTopics = shuffle([...topics]);
+	const T = shuffledTopics.length;
+	const result: Topic[] = [];
+
+	// Compute how many sessions each topic gets: floor(S/T) or ceil(S/T)
+	const base = Math.floor(S / T);
+	const remainder = S % T;
+
+	for (let t = 0; t < T; t++) {
+		const count = base + (t < remainder ? 1 : 0);
+		for (let j = 0; j < count; j++) {
+			result.push(shuffledTopics[t]);
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Assign agents to S sessions using a 2-phase approach.
+ *
+ * Phase 1 (Guarantee): Shuffle all agents and round-robin assign to sessions.
+ *   Every agent gets at least 1 session.
+ *
+ * Phase 2 (Fill): For sessions with fewer than P agents, fill from agents
+ *   that have fewer than M assignments and are not already in the session.
+ *   Prefer agents with the fewest current assignments.
+ *
+ * Returns an array of S arrays, each containing agent IDs.
+ */
+function assignAgents(agents: Agent[], S: number, P: number, M: number): string[][] {
+	const sessions: string[][] = Array.from({ length: S }, () => []);
+	const count = new Map<string, number>();
+	for (const a of agents) {
+		count.set(a.id, 0);
+	}
+
+	// Phase 1: guarantee round
+	const shuffled = shuffle([...agents]);
+	for (let i = 0; i < shuffled.length; i++) {
+		const sessionIndex = i % S;
+		sessions[sessionIndex].push(shuffled[i].id);
+		count.set(shuffled[i].id, 1);
+	}
+
+	// Phase 2: fill remaining slots
+	for (const session of sessions) {
+		while (session.length < P) {
+			const candidates = agents.filter(
+				(a) => (count.get(a.id) ?? 0) < M && !session.includes(a.id),
+			);
+			if (candidates.length === 0) break;
+
+			const minCount = Math.min(...candidates.map((a) => count.get(a.id) ?? 0));
+			const best = candidates.filter((a) => count.get(a.id) === minCount);
+			const chosen = best[Math.floor(Math.random() * best.length)];
+
+			session.push(chosen.id);
+			count.set(chosen.id, (count.get(chosen.id) ?? 0) + 1);
+		}
+	}
+
+	return sessions;
+}
+
+/**
+ * Fisher-Yates shuffle
+ */
+function shuffle<T>(array: T[]): T[] {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+	return array;
+}
+
+/**
+ * Create a single session in the database with the given topic and agents
+ */
+async function createSession(env: Bindings, topicId: string, agents: Agent[]): Promise<void> {
 	const sessionId = generateUUID();
 	const now = getCurrentTimestamp();
 
@@ -74,62 +245,26 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		`INSERT INTO sessions (id, topic_id, status, mode, max_turns, created_at, updated_at)
      VALUES (?, ?, 'pending', ?, ?, ?, ?)`,
 	)
-		.bind(sessionId, topic.id, selectedMode.id, maxTurns, now, now)
+		.bind(sessionId, topicId, selectedMode.id, maxTurns, now, now)
 		.run();
 
 	console.log(`Selected mode: ${selectedMode.name} (${selectedMode.id}), maxTurns: ${maxTurns}`);
 
-	// 3. Select active agents (fixed count: 4 agents)
-	const participantCount = SESSION_PARTICIPANT_COUNT;
-	const agents = await selectActiveAgents(env.DB, participantCount);
-
-	if (agents.length === 0) {
-		console.log(`No active agents available for topic ${topic.id}`);
-		// Cancel the session if no agents available
-		await env.DB.prepare("UPDATE sessions SET status = 'cancelled' WHERE id = ?")
-			.bind(sessionId)
-			.run();
-		return;
-	}
-
-	console.log(`Selected ${agents.length} agents for session ${sessionId}`);
-
-	// 4. Add participants with speaking order
+	// Add participants with speaking order
 	for (let i = 0; i < agents.length; i++) {
 		const agent = agents[i];
 		const participantId = generateUUID();
-		const speakingOrder = i + 1; // 1-based order (1, 2, 3, 4)
+		const speakingOrder = i + 1;
 
-		console.log(
-			`Adding participant ${i + 1}/${agents.length}: agent=${agent.id} (${agent.name}), order=${speakingOrder}`,
-		);
-
-		try {
-			const result = await env.DB.prepare(
-				`INSERT INTO session_participants (id, session_id, agent_id, joined_at, speaking_order)
-         VALUES (?, ?, ?, ?, ?)`,
-			)
-				.bind(participantId, sessionId, agent.id, now, speakingOrder)
-				.run();
-
-			console.log(`Participant ${agent.name} added successfully. Result:`, result);
-		} catch (error) {
-			console.error(`Failed to add participant ${agent.name}:`, error);
-			throw error;
-		}
+		await env.DB.prepare(
+			`INSERT INTO session_participants (id, session_id, agent_id, joined_at, speaking_order)
+       VALUES (?, ?, ?, ?, ?)`,
+		)
+			.bind(participantId, sessionId, agent.id, now, speakingOrder)
+			.run();
 	}
 
-	// Verify participants were added
-	const verifyResult = await env.DB.prepare(
-		"SELECT COUNT(*) as count FROM session_participants WHERE session_id = ?",
-	)
-		.bind(sessionId)
-		.first<{ count: number }>();
-	console.log(
-		`Verification: ${verifyResult?.count || 0} participants added to session ${sessionId}`,
-	);
-
-	// 5. Generate session strategies from feedback for each agent
+	// Generate session strategies from feedback for each agent
 	for (const agent of agents) {
 		try {
 			await generateAndSaveStrategy(env, agent, sessionId);
@@ -138,7 +273,7 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		}
 	}
 
-	// 6. Update session status to active
+	// Update session status to active
 	await env.DB.prepare(
 		`UPDATE sessions
      SET status = 'active',
@@ -150,7 +285,7 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		.bind(now, agents.length, now, sessionId)
 		.run();
 
-	// 7. Create initial turn (turn 1)
+	// Create initial turn (turn 1)
 	const turnId = generateUUID();
 	await env.DB.prepare(
 		`INSERT INTO turns (id, session_id, turn_number, status, created_at)
@@ -159,36 +294,7 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		.bind(turnId, sessionId, now)
 		.run();
 
-	console.log(`Session ${sessionId} created successfully with ${agents.length} participants`);
-}
-
-/**
- * Select active agents for deliberation
- * Criteria:
- * - Feedback within last N days, OR
- * - Knowledge updated within last N days, OR
- * - Agent created within last N days
- */
-async function selectActiveAgents(db: D1Database, count: number): Promise<Agent[]> {
-	const thresholdTimestamp = getTimestampDaysAgo(AGENT_ACTIVITY_THRESHOLD_DAYS);
-
-	const result = await db
-		.prepare(
-			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
-       FROM agents a
-       LEFT JOIN feedbacks f ON a.id = f.agent_id
-       LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
-       WHERE f.created_at >= ?
-          OR ke.created_at >= ?
-          OR a.created_at >= ?
-       GROUP BY a.id
-       ORDER BY RANDOM()
-       LIMIT ?`,
-		)
-		.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp, count)
-		.all<Agent>();
-
-	return result.results;
+	console.log(`Session ${sessionId} created with ${agents.length} participants`);
 }
 
 /**
@@ -199,7 +305,6 @@ async function generateAndSaveStrategy(
 	agent: Agent,
 	sessionId: string,
 ): Promise<void> {
-	// Find the most recent completed session this agent participated in
 	const lastSession = await env.DB.prepare(
 		`SELECT s.id FROM sessions s
      JOIN session_participants sp ON s.id = sp.session_id
@@ -211,7 +316,6 @@ async function generateAndSaveStrategy(
 
 	if (!lastSession) return;
 
-	// Get feedback for that session
 	const feedback = await env.DB.prepare(
 		`SELECT id, agent_id, session_id, content, applied_at, created_at
      FROM feedbacks
@@ -223,7 +327,6 @@ async function generateAndSaveStrategy(
 
 	if (!feedback) return;
 
-	// Get previous statements from that session
 	const previousStatements = await env.DB.prepare(
 		`SELECT s.id, s.turn_id, s.agent_id, s.content, s.thinking_process, s.created_at,
             a.name as agent_name, t.turn_number
@@ -236,10 +339,8 @@ async function generateAndSaveStrategy(
 		.bind(lastSession.id)
 		.all<Statement & { agent_name: string; turn_number: number }>();
 
-	// Generate strategy via LLM
 	const strategy = await generateSessionStrategy(env, agent, feedback, previousStatements.results);
 
-	// Save to session_strategies
 	const strategyId = generateUUID();
 	const now = getCurrentTimestamp();
 	await env.DB.prepare(

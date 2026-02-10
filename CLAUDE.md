@@ -155,6 +155,49 @@ VITE_API_URL=http://localhost:8787      # Backend API URL
 - Use `--remote` flag for production operations
 - Database ID must be set in `wrangler.toml` after creation
 
+## UI Design System
+
+**Rule: Always use design system components for frontend UI.** Never implement buttons, cards, badges, etc. with raw Tailwind classes. Use semantic tokens like `text-muted-foreground` instead of hardcoded colors like `text-gray-600`. See `docs/design-system.md` for full specification.
+
+### shadcn Components (`~/components/ui/`)
+
+```bash
+pnpm dlx shadcn@latest add <component>  # Add new component
+```
+
+| Component | Usage |
+|---|---|
+| `Button` | All actions. variant: default/secondary/destructive/outline/ghost/link |
+| `Card` | Content container. CardHeader/CardTitle/CardContent/CardFooter |
+| `Badge` | Generic label. variant: default/secondary/destructive/outline |
+| `Alert` | Notification box. AlertTitle/AlertDescription |
+| `Input` | Single-line text input field |
+| `Textarea` | Multi-line text input field |
+| `Label` | Form field label |
+| `AlertDialog` | Modal confirmation dialog |
+| `Tabs` | Tab switching UI. TabsList/TabsTrigger/TabsContent |
+
+### Custom Components (`~/components/design-system`)
+
+```tsx
+import { LoadingState, StatusBadge, EmptyState } from "~/components/design-system"
+```
+
+| Component | Description |
+|---|---|
+| `Spinner` | Loading spinner. size: sm/md/lg |
+| `LoadingState` | Full-page loading state with message |
+| `StatusBadge` | Semantic status display. variant: active/completed/pending/cancelled/info/feedback/direction |
+| `EmptyState` | Empty data state with optional CTA button |
+| `PageHeader` | Page title with optional action slot |
+| `BackLink` | Back navigation link to parent page |
+| `InfoAlert` | Info/warning box. variant: info/warning/error/feedback/strategy |
+| `FormField` | Label + input + character counter integrated field |
+| `ConfirmDialog` | Confirmation dialog. Do NOT use `window.confirm` |
+| `FilterTabs` | Filter toggle tabs with option list |
+| `Pagination` | Page navigation with prev/next buttons |
+| `ScoreCard` | Score display card with colored value |
+
 ## Code Style
 
 - **Formatting**: Biome

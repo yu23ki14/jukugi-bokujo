@@ -326,12 +326,12 @@ app.post("/api/test-queue/send", async (c) => {
 			return c.json({ error: "No pending turns found. Run master cron first." }, 404);
 		}
 
-		// Get first participant
+		// Get first participant (by speaking_order)
 		const participant = await c.env.DB.prepare(
-			"SELECT agent_id FROM session_participants WHERE session_id = ? LIMIT 1",
+			"SELECT agent_id, speaking_order FROM session_participants WHERE session_id = ? ORDER BY speaking_order ASC LIMIT 1",
 		)
 			.bind(turn.session_id)
-			.first<{ agent_id: string }>();
+			.first<{ agent_id: string; speaking_order: number }>();
 
 		if (!participant) {
 			return c.json({ error: "No participants found for this turn" }, 404);
@@ -343,6 +343,7 @@ app.post("/api/test-queue/send", async (c) => {
 			sessionId: turn.session_id,
 			agentId: participant.agent_id,
 			turnNumber: turn.turn_number,
+			speakingOrder: participant.speaking_order,
 			attempt: 0,
 		});
 
@@ -354,6 +355,7 @@ app.post("/api/test-queue/send", async (c) => {
 				sessionId: turn.session_id,
 				agentId: participant.agent_id,
 				turnNumber: turn.turn_number,
+				speakingOrder: participant.speaking_order,
 			},
 		});
 	} catch (error) {
@@ -374,6 +376,7 @@ app.post("/api/test-queue/send", async (c) => {
 
 import { agentsRouter } from "./routes/agents";
 import { directionsRouter } from "./routes/directions";
+import { feedbackRequestsRouter } from "./routes/feedback-requests";
 import { feedbacksRouter } from "./routes/feedbacks";
 import { knowledgeRouter } from "./routes/knowledge";
 import { sessionsRouter } from "./routes/sessions";
@@ -385,6 +388,7 @@ app.route("/api/agents", agentsRouter);
 app.route("/api", knowledgeRouter); // Mounts /agents/:agentId/knowledge and /knowledge/:id
 app.route("/api", directionsRouter); // Mounts /agents/:agentId/directions
 app.route("/api", feedbacksRouter); // Mounts /agents/:agentId/feedbacks and /agents/:agentId/strategies
+app.route("/api", feedbackRequestsRouter); // Mounts /feedback-requests
 app.route("/api/sessions", sessionsRouter);
 
 // ============================================================================
@@ -449,6 +453,29 @@ import { checkAndCompleteTurn } from "./queue/turn-completion";
 import { processAgentStatement } from "./queue/turn-consumer";
 import type { TurnQueueMessage } from "./types/queue";
 
+/**
+ * Get the next session participant after the given speaking order
+ */
+async function getNextSessionParticipant(
+	db: D1Database,
+	sessionId: string,
+	currentSpeakingOrder: number,
+): Promise<{ agentId: string; speakingOrder: number } | null> {
+	const result = await db
+		.prepare(
+			`SELECT agent_id, speaking_order
+       FROM session_participants
+       WHERE session_id = ? AND speaking_order > ?
+       ORDER BY speaking_order ASC
+       LIMIT 1`,
+		)
+		.bind(sessionId, currentSpeakingOrder)
+		.first<{ agent_id: string; speaking_order: number }>();
+
+	if (!result) return null;
+	return { agentId: result.agent_id, speakingOrder: result.speaking_order };
+}
+
 async function handleQueueEvent(
 	batch: MessageBatch<TurnQueueMessage>,
 	env: Bindings,
@@ -456,74 +483,67 @@ async function handleQueueEvent(
 ): Promise<void> {
 	console.log(`[Queue Consumer] Processing batch of ${batch.messages.length} messages`);
 
-	// Track turns that had successful processing (for completion check)
-	const processedTurns = new Set<string>();
+	// Process messages sequentially (each message = one agent in speaking order)
+	for (const message of batch.messages) {
+		// 1. Process this agent's statement
+		try {
+			const result = await processAgentStatement(env, message.body);
 
-	// Process all messages in parallel using Promise.allSettled
-	const results = await Promise.allSettled(
-		batch.messages.map(async (message) => {
-			try {
-				const result = await processAgentStatement(env, message.body);
-
-				if (result.success) {
-					console.log(
-						`[Queue Consumer] Successfully processed agent ${result.agentId}, statement: ${result.statementId}`,
-					);
-					message.ack(); // Mark as successfully processed
-
-					// Track this turn for completion check
-					processedTurns.add(message.body.turnId);
-				} else if (result.isRateLimitError) {
-					// Rate limit error - retry with exponential backoff
-					const delaySeconds = Math.min(
-						API_RETRY_BASE_DELAY ** (message.attempts + 1),
-						3600, // Max 1 hour
-					);
-					console.warn(
-						`[Queue Consumer] Rate limit hit for agent ${result.agentId}, retrying after ${delaySeconds}s`,
-					);
-					message.retry({ delaySeconds });
-				} else {
-					// Other error - retry with default delay
-					console.error(
-						`[Queue Consumer] Processing failed for agent ${result.agentId}: ${result.error}`,
-					);
-					message.retry({ delaySeconds: 60 });
-				}
-			} catch (error) {
-				// Unexpected error
-				console.error(`[Queue Consumer] Unexpected error processing message:`, error);
-				message.retry({ delaySeconds: 60 });
+			if (result.success) {
+				console.log(
+					`[Queue Consumer] Successfully processed agent ${result.agentId} ` +
+						`(order ${message.body.speakingOrder}), statement: ${result.statementId}`,
+				);
+				message.ack();
+			} else {
+				// Failed but don't block the chain - ack and move on
+				console.error(
+					`[Queue Consumer] Processing failed for agent ${result.agentId}: ${result.error}, ` +
+						`skipping and continuing chain`,
+				);
+				message.ack();
 			}
-		}),
-	);
+		} catch (error) {
+			console.error(
+				`[Queue Consumer] Unexpected error for agent ${message.body.agentId}, ` +
+					`skipping and continuing chain:`,
+				error,
+			);
+			message.ack();
+		}
 
-	// Log results summary
-	const succeeded = results.filter((r) => r.status === "fulfilled").length;
-	const failed = results.filter((r) => r.status === "rejected").length;
-	console.log(
-		`[Queue Consumer] Batch processed: ${succeeded} succeeded, ${failed} failed (will retry)`,
-	);
+		// 2. Always chain to next agent or complete the turn
+		try {
+			const nextParticipant = await getNextSessionParticipant(
+				env.DB,
+				message.body.sessionId,
+				message.body.speakingOrder,
+			);
 
-	// Check if any turns are now complete
-	// Use the first message to get session/turn info (all messages in batch are from same turn ideally)
-	if (processedTurns.size > 0 && batch.messages.length > 0) {
-		for (const turnId of processedTurns) {
-			// Find a message for this turn
-			const message = batch.messages.find((m) => m.body.turnId === turnId);
-			if (message) {
-				try {
-					await checkAndCompleteTurn(
-						env,
-						message.body.turnId,
-						message.body.sessionId,
-						message.body.turnNumber,
-					);
-				} catch (error) {
-					console.error(`[Queue Consumer] Failed to check turn completion:`, error);
-					// Don't fail the batch if completion check fails
-				}
+			if (nextParticipant) {
+				await env.TURN_QUEUE.send({
+					turnId: message.body.turnId,
+					sessionId: message.body.sessionId,
+					agentId: nextParticipant.agentId,
+					turnNumber: message.body.turnNumber,
+					speakingOrder: nextParticipant.speakingOrder,
+					attempt: 0,
+				});
+				console.log(
+					`[Queue Consumer] Chained next agent (order ${nextParticipant.speakingOrder}) ` +
+						`for turn ${message.body.turnId}`,
+				);
+			} else {
+				// Last agent in order - complete the turn regardless of failures
+				await checkAndCompleteTurn(
+					env,
+					message.body.turnId,
+					message.body.sessionId,
+					message.body.turnNumber,
+				);
 			}
+		} catch (chainError) {
+			console.error(`[Queue Consumer] Failed to chain next agent:`, chainError);
 		}
 	}
 }

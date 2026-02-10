@@ -1,48 +1,100 @@
 import { useUser } from "@clerk/clerk-react";
+import { useState } from "react";
 import { Link } from "react-router";
-import { AgentCard } from "../components/AgentCard";
+import {
+	EmptyState,
+	FormField,
+	LoadingState,
+	ScoreCard,
+	StatusBadge,
+} from "~/components/design-system";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+} from "~/components/ui/carousel";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import {
 	type AgentSummary,
+	type FeedbackRequest,
 	type SessionSummary,
 	useGetApiAgents,
+	useGetApiFeedbackRequests,
 	useGetApiSessions,
+	usePostApiAgentsAgentIdFeedbacks,
 } from "../hooks/backend";
 
 export function meta() {
 	return [{ title: "Dashboard - Jukugi Bokujo" }];
 }
 
+const darkCssVars = {
+	"--foreground": "oklch(1 0 0)",
+	"--muted-foreground": "oklch(0.75 0 0)",
+} as React.CSSProperties;
+
+function getTimeTheme(): {
+	greeting: string;
+	bgClass: string;
+	cssVars?: React.CSSProperties;
+} {
+	const hour = new Date().getHours();
+	if (5 < hour && hour < 11)
+		return { greeting: "おはようございます", bgClass: "bg-amber-50" };
+	if (11 < hour && hour < 17)
+		return { greeting: "こんにちは", bgClass: "bg-sky-50" };
+	if (17 < hour && hour < 22)
+		return { greeting: "こんばんは", bgClass: "bg-orange-800", cssVars: darkCssVars };
+	return { greeting: "お疲れさまです", bgClass: "bg-indigo-950", cssVars: darkCssVars };
+}
+
+function getRanchWeather(
+	activeSessionCount: number,
+	feedbackCount: number,
+): { emoji: string; label: string } {
+	const activity = activeSessionCount + feedbackCount;
+	if (activity >= 4) return { emoji: "☀️", label: "にぎやか" };
+	if (activity >= 2) return { emoji: "⛅", label: "活動中" };
+	if (activity >= 1) return { emoji: "🌤️", label: "のんびり" };
+	return { emoji: "🌙", label: "しーん" };
+}
+
 export default function Dashboard() {
 	const { user } = useUser();
 
-	// Fetch agents using Orval-generated React Query hooks
 	const { data: agentsData, isLoading: agentsLoading, error: agentsError } = useGetApiAgents();
 
-	// Fetch all sessions for stats
-	const {
-		data: allSessionsData,
-		isLoading: allSessionsLoading,
-		error: allSessionsError,
-	} = useGetApiSessions({ limit: 100 });
-
-	// Fetch active sessions
 	const {
 		data: activeSessionsData,
 		isLoading: activeSessionsLoading,
 		error: activeSessionsError,
 	} = useGetApiSessions({ status: "active", limit: 5 });
 
-	// Compute loading and data states
-	const loading = agentsLoading || allSessionsLoading || activeSessionsLoading;
-	const hasError = agentsError || allSessionsError || activeSessionsError;
+	const {
+		data: completedSessionsData,
+		isLoading: completedSessionsLoading,
+		error: completedSessionsError,
+	} = useGetApiSessions({ status: "completed", limit: 1 });
 
-	// Extract data safely with proper null checks
+	const {
+		data: feedbackData,
+		isLoading: feedbackLoading,
+		refetch: refetchFeedback,
+	} = useGetApiFeedbackRequests();
+
+	const loading =
+		agentsLoading || activeSessionsLoading || completedSessionsLoading || feedbackLoading;
+	const hasError = agentsError || activeSessionsError || completedSessionsError;
+
 	const agentsResponse = !agentsError && agentsData?.data ? agentsData.data : null;
-	const allSessionsResponse =
-		!allSessionsError && allSessionsData?.data ? allSessionsData.data : null;
 	const activeSessionsResponse =
 		!activeSessionsError && activeSessionsData?.data ? activeSessionsData.data : null;
+	const completedSessionsResponse =
+		!completedSessionsError && completedSessionsData?.data ? completedSessionsData.data : null;
 
 	const agents =
 		agentsResponse && "agents" in agentsResponse ? agentsResponse.agents.slice(0, 5) : [];
@@ -52,173 +104,53 @@ export default function Dashboard() {
 			? activeSessionsResponse.sessions
 			: [];
 
-	const stats = {
-		totalAgents: agentsResponse && "agents" in agentsResponse ? agentsResponse.agents.length : 0,
-		totalSessions:
-			allSessionsResponse && "total" in allSessionsResponse ? allSessionsResponse.total : 0,
-		activeSessions:
-			activeSessionsResponse && "total" in activeSessionsResponse
-				? activeSessionsResponse.total
-				: 0,
-	};
+	const completedSessionsTotal =
+		completedSessionsResponse && "total" in completedSessionsResponse
+			? completedSessionsResponse.total
+			: 0;
 
-	// Handle errors
+	const feedbackRequests =
+		feedbackData?.data && "feedback_requests" in feedbackData.data
+			? feedbackData.data.feedback_requests
+			: [];
+
 	if (hasError) {
 		console.error("Failed to load dashboard data:", {
 			agentsError,
-			allSessionsError,
 			activeSessionsError,
+			completedSessionsError,
 		});
 	}
 
+	const timeTheme = getTimeTheme();
+
 	return (
 		<ProtectedRoute>
-			<div>
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold mb-2">Welcome back, {user?.firstName || "User"}!</h1>
-					<p className="text-gray-600">Here's what's happening with your AI deliberation agents</p>
-				</div>
-
-				{/* Statistics Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-					<StatCard
-						title="My Agents"
-						value={stats.totalAgents}
-						description="Total agents created"
-						linkTo="/agents"
-						linkText="View all"
-					/>
-					<StatCard
-						title="Active Sessions"
-						value={stats.activeSessions}
-						description="Currently deliberating"
-						linkTo="/sessions?status=active"
-						linkText="View active"
-						highlight
-					/>
-					<StatCard
-						title="Total Sessions"
-						value={stats.totalSessions}
-						description="Participated in"
-						linkTo="/sessions"
-						linkText="View history"
-					/>
-				</div>
-
-				{/* Quick Actions */}
-				<div className="mb-8">
-					<h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-					<div className="flex flex-wrap gap-4">
-						<Link
-							to="/agents/new"
-							className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-						>
-							<span>+</span>
-							Create New Agent
-						</Link>
-						<Link
-							to="/sessions"
-							className="inline-flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition border border-gray-300 font-semibold"
-						>
-							Browse Sessions
-						</Link>
-						<Link
-							to="/topics"
-							className="inline-flex items-center gap-2 bg-white text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition border border-gray-300 font-semibold"
-						>
-							Explore Topics
-						</Link>
-					</div>
-				</div>
-
+			<div
+				className={`-mx-4 -my-8 px-4 py-8 transition-colors text-foreground ${timeTheme.bgClass}`}
+				style={timeTheme.cssVars}
+			>
 				{loading ? (
-					<div className="text-center py-12">
-						<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-						<p className="mt-4 text-gray-600">Loading dashboard...</p>
-					</div>
+					<LoadingState message="牧場を準備中..." />
+				) : agents.length === 0 ? (
+					<OnboardingView />
 				) : (
 					<>
-						{/* My Agents */}
-						<div className="mb-8">
-							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-2xl font-bold">My Agents</h2>
-								<Link to="/agents" className="text-blue-600 hover:text-blue-800 text-sm">
-									View all →
-								</Link>
-							</div>
-							{agents.length === 0 ? (
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<p className="text-gray-600 mb-4">You haven't created any agents yet</p>
-									<Link
-										to="/agents/new"
-										className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-									>
-										Create Your First Agent
-									</Link>
-								</div>
-							) : (
-								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-									{agents.map((agent: AgentSummary) => (
-										<AgentCard key={agent.id} agent={agent} />
-									))}
-								</div>
-							)}
-						</div>
-
-						{/* Active Sessions */}
-						<div className="mb-8">
-							<div className="flex justify-between items-center mb-4">
-								<h2 className="text-2xl font-bold">Active Sessions</h2>
-								<Link
-									to="/sessions?status=active"
-									className="text-blue-600 hover:text-blue-800 text-sm"
-								>
-									View all →
-								</Link>
-							</div>
-							{activeSessions.length === 0 ? (
-								<div className="bg-gray-50 rounded-lg p-8 text-center">
-									<p className="text-gray-600">No active sessions at the moment</p>
-								</div>
-							) : (
-								<div className="space-y-4">
-									{activeSessions.map((session: SessionSummary) => (
-										<Link
-											key={session.id}
-											to={`/sessions/${session.id}`}
-											className="block bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
-										>
-											<div className="flex justify-between items-start mb-2">
-												<h3 className="font-semibold text-lg">{session.topic.title}</h3>
-												<span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-													Active
-												</span>
-											</div>
-											<div className="flex items-center gap-4 text-sm text-gray-600">
-												<span>{session.participant_count} participants</span>
-												<span>•</span>
-												<span>
-													Turn {session.current_turn} / {session.max_turns}
-												</span>
-											</div>
-										</Link>
-									))}
-								</div>
-							)}
-						</div>
-
-						{/* Getting Started Guide */}
-						{agents.length === 0 && (
-							<div className="bg-blue-50 rounded-lg p-6">
-								<h3 className="text-lg font-semibold mb-3">Getting Started</h3>
-								<ol className="list-decimal list-inside space-y-2 text-gray-700">
-									<li>Create your first AI agent with a unique personality</li>
-									<li>Add knowledge and direction to shape your agent's behavior</li>
-									<li>Watch your agent participate in deliberations automatically</li>
-									<li>Provide feedback to evolve your agent's persona over time</li>
-								</ol>
-							</div>
-						)}
+						<RanchHeader
+							userName={user?.firstName || "User"}
+							agentCount={agents.length}
+							activeSessionCount={activeSessions.length}
+							feedbackCount={feedbackRequests.length}
+							greeting={timeTheme.greeting}
+						/>
+						<AgentsDashboardView
+							agents={agents}
+							activeSessions={activeSessions}
+							feedbackRequests={feedbackRequests}
+							refetchFeedback={refetchFeedback}
+							completedSessionsTotal={completedSessionsTotal}
+							userName={user?.firstName || "User"}
+						/>
 					</>
 				)}
 			</div>
@@ -226,44 +158,355 @@ export default function Dashboard() {
 	);
 }
 
-function StatCard({
-	title,
-	value,
-	description,
-	linkTo,
-	linkText,
-	highlight = false,
+function RanchHeader({
+	userName,
+	agentCount,
+	activeSessionCount,
+	feedbackCount,
+	greeting,
 }: {
-	title: string;
-	value: number;
-	description: string;
-	linkTo: string;
-	linkText: string;
-	highlight?: boolean;
+	userName: string;
+	agentCount: number;
+	activeSessionCount: number;
+	feedbackCount: number;
+	greeting: string;
+}) {
+	const weather = getRanchWeather(activeSessionCount, feedbackCount);
+
+	return (
+		<div className="mb-8">
+			<h1 className="text-2xl font-bold mb-1">
+				{weather.emoji} {greeting}、{userName}さん
+			</h1>
+			<p className="text-muted-foreground mb-3">今日の牧場は「{weather.label}」です</p>
+			<div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+				<span>🐄 エージェント {agentCount}頭</span>
+				<span>📝 出張中 {activeSessionCount}頭</span>
+				<span>💬 フィードバック待ち {feedbackCount}件</span>
+			</div>
+		</div>
+	);
+}
+
+function RanchLevel({
+	agentCount,
+	completedSessionsTotal,
+	userName,
+}: {
+	agentCount: number;
+	completedSessionsTotal: number;
+	userName: string;
+}) {
+	const xp = agentCount * 30 + completedSessionsTotal * 15;
+	const level = Math.floor(xp / 100) + 1;
+	const currentLevelXp = xp % 100;
+
+	return (
+		<div className="mb-8">
+			<div className="flex items-baseline gap-2 mb-2">
+				<h2 className="text-lg font-bold">🏡 {userName}牧場</h2>
+				<span className="text-sm font-semibold text-muted-foreground">Lv.{level}</span>
+				<span className="text-xs text-muted-foreground ml-auto">{currentLevelXp} / 100 XP</span>
+			</div>
+			<div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-4">
+				<div
+					className="h-full bg-primary rounded-full transition-all"
+					style={{ width: `${currentLevelXp}%` }}
+				/>
+			</div>
+			<div className="grid grid-cols-2 gap-4">
+				<ScoreCard label="エージェント数" value={agentCount} color="blue" />
+				<ScoreCard label="参加議論数" value={completedSessionsTotal} color="green" />
+			</div>
+		</div>
+	);
+}
+
+function RanchAgentList({
+	agents,
+	feedbackAgentIds,
+}: {
+	agents: AgentSummary[];
+	feedbackAgentIds: Set<string>;
 }) {
 	return (
-		<div
-			className={`rounded-lg p-6 ${
-				highlight ? "bg-blue-600 text-white" : "bg-white border border-gray-200"
-			}`}
-		>
-			<h3 className={`text-sm font-semibold mb-2 ${highlight ? "text-blue-100" : "text-gray-600"}`}>
-				{title}
-			</h3>
-			<p className={`text-4xl font-bold mb-1 ${highlight ? "text-white" : "text-gray-900"}`}>
-				{value}
-			</p>
-			<p className={`text-sm mb-3 ${highlight ? "text-blue-100" : "text-gray-500"}`}>
-				{description}
-			</p>
-			<Link
-				to={linkTo}
-				className={`text-sm font-semibold ${
-					highlight ? "text-white hover:text-blue-50" : "text-blue-600 hover:text-blue-800"
-				}`}
-			>
-				{linkText} →
-			</Link>
+		<div className="mb-8">
+			<div className="flex justify-between items-center mb-4">
+				<h2 className="text-lg font-bold">🐄 牧場のなかま</h2>
+				<Button variant="link" size="sm" asChild>
+					<Link to="/agents">全員を見る →</Link>
+				</Button>
+			</div>
+			<Card>
+				<CardContent className="divide-y">
+					{agents.map((agent) => (
+						<Link
+							key={agent.id}
+							to={`/agents/${agent.id}`}
+							className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:opacity-80 transition-opacity"
+						>
+							<div className="flex items-center gap-3">
+								<span className="text-xl">🐄</span>
+								<div>
+									<p className="font-semibold">{agent.name}</p>
+									<p className="text-sm text-muted-foreground">
+										{agent.persona.core_values[0] || ""}
+									</p>
+								</div>
+							</div>
+							{feedbackAgentIds.has(agent.id) ? (
+								<StatusBadge variant="feedback">❗ フィードバック待ち</StatusBadge>
+							) : agent.active_session_count > 0 ? (
+								<StatusBadge variant="active">📝 出張中</StatusBadge>
+							) : (
+								<StatusBadge variant="pending">💤 のんびり中</StatusBadge>
+							)}
+						</Link>
+					))}
+					<Link
+						to="/agents/new"
+						className="flex items-center gap-3 py-3 last:pb-0 text-muted-foreground hover:text-foreground transition-colors"
+					>
+						<span className="text-xl">+</span>
+						<p className="font-semibold">新しいなかまを迎える</p>
+					</Link>
+				</CardContent>
+			</Card>
 		</div>
+	);
+}
+
+function OnboardingView() {
+	return (
+		<div className="space-y-8">
+			<Card>
+				<CardContent className="text-center py-12">
+					<p className="text-4xl mb-4">🐄</p>
+					<h2 className="text-2xl font-bold mb-2">まだ牧場にエージェントがいません</h2>
+					<p className="text-muted-foreground mb-6">
+						AIエージェントを作って、熟議に送り出しましょう
+					</p>
+					<Button asChild size="lg">
+						<Link to="/agents/new">エージェントを作成する</Link>
+					</Button>
+				</CardContent>
+			</Card>
+
+			<div>
+				<h3 className="text-lg font-semibold mb-4">はじめかた</h3>
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<StepCard step={1} title="エージェントを作る" description="名前と性格を設定" />
+					<StepCard step={2} title="知識と方向性を与える" description="あなたの考えを教える" />
+					<StepCard step={3} title="自動で熟議に参加" description="エージェントを観察する" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function StepCard({
+	step,
+	title,
+	description,
+}: {
+	step: number;
+	title: string;
+	description: string;
+}) {
+	return (
+		<Card>
+			<CardContent className="py-4">
+				<p className="text-sm font-semibold text-muted-foreground mb-1">Step {step}</p>
+				<p className="font-semibold">{title}</p>
+				<p className="text-sm text-muted-foreground">{description}</p>
+			</CardContent>
+		</Card>
+	);
+}
+
+function FeedbackWantedSection({
+	feedbackRequests,
+	agents,
+	refetchFeedback,
+}: {
+	feedbackRequests: FeedbackRequest[];
+	agents: AgentSummary[];
+	refetchFeedback: () => void;
+}) {
+	if (feedbackRequests.length === 0) {
+		return null;
+	}
+
+	const agentMap = new Map(agents.map((a) => [a.id, a]));
+
+	return (
+		<div className="mb-8">
+			<h2 className="text-lg font-bold mb-4">🏠 牧場に帰ってきたなかま</h2>
+			<Carousel className="mx-9">
+				<CarouselContent>
+					{feedbackRequests.map((request: FeedbackRequest) => (
+						<CarouselItem key={`${request.agent_id}-${request.session_id}`}>
+							<FeedbackCard
+								request={request}
+								agent={agentMap.get(request.agent_id)}
+								onSubmitted={refetchFeedback}
+							/>
+						</CarouselItem>
+					))}
+				</CarouselContent>
+				<CarouselPrevious className="size-8" />
+				<CarouselNext className="size-8" />
+			</Carousel>
+		</div>
+	);
+}
+
+function FeedbackCard({
+	request,
+	agent,
+	onSubmitted,
+}: {
+	request: FeedbackRequest;
+	agent?: AgentSummary;
+	onSubmitted: () => void;
+}) {
+	const [content, setContent] = useState("");
+	const mutation = usePostApiAgentsAgentIdFeedbacks();
+
+	const handleSubmit = () => {
+		if (!content.trim()) return;
+
+		mutation.mutate(
+			{
+				agentId: request.agent_id,
+				data: {
+					session_id: request.session_id,
+					content: content.trim(),
+				},
+			},
+			{
+				onSuccess: () => {
+					setContent("");
+					onSubmitted();
+				},
+			},
+		);
+	};
+
+	const coreValue = agent?.persona.core_values[0];
+
+	return (
+		<Card className="py-3 border-l-4 border-orange-400">
+			<CardContent className="px-3">
+				<div className="mb-3">
+					<p className="font-bold text-lg">🐄 {request.agent_name} が帰ってきた！</p>
+					<p className="text-muted-foreground text-sm">
+						「{request.topic_title}」の議論に参加してきました
+					</p>
+					{coreValue && (
+						<div className="mt-2">
+							<StatusBadge variant="info">大切にしていること: {coreValue}</StatusBadge>
+						</div>
+					)}
+				</div>
+
+				<FormField
+					label="声をかける"
+					name={`feedback-${request.agent_id}-${request.session_id}`}
+					type="textarea"
+					value={content}
+					onChange={setContent}
+					placeholder="がんばったね、次はもっと〇〇してみて..."
+					maxLength={400}
+					rows={3}
+					disabled={mutation.isPending}
+				/>
+
+				<div className="flex justify-between items-center mt-3">
+					<Button variant="link" size="sm" asChild className="px-0">
+						<Link to={`/sessions/${request.session_id}`}>議論を見る →</Link>
+					</Button>
+					<Button onClick={handleSubmit} disabled={!content.trim() || mutation.isPending} size="sm">
+						{mutation.isPending ? "送信中..." : "声をかける"}
+					</Button>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function AgentsDashboardView({
+	agents,
+	activeSessions,
+	feedbackRequests,
+	refetchFeedback,
+	completedSessionsTotal,
+	userName,
+}: {
+	agents: AgentSummary[];
+	activeSessions: SessionSummary[];
+	feedbackRequests: FeedbackRequest[];
+	refetchFeedback: () => void;
+	completedSessionsTotal: number;
+	userName: string;
+}) {
+	const feedbackAgentIds = new Set(feedbackRequests.map((r) => r.agent_id));
+
+	return (
+		<>
+			{/* Feedback Wanted */}
+			<FeedbackWantedSection
+				feedbackRequests={feedbackRequests}
+				agents={agents}
+				refetchFeedback={refetchFeedback}
+			/>
+
+			{/* Ranch Level */}
+			<RanchLevel
+				agentCount={agents.length}
+				completedSessionsTotal={completedSessionsTotal}
+				userName={userName}
+			/>
+
+			{/* Active Sessions */}
+			{agents.length > 0 && (
+				<div className="mb-8">
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-lg font-bold">📝 進行中の議論</h2>
+						<Button variant="link" size="sm" asChild>
+							<Link to="/sessions?status=active">すべて見る →</Link>
+						</Button>
+					</div>
+					{activeSessions.length === 0 ? (
+						<EmptyState message="進行中の議論はありません" />
+					) : (
+						<div className="space-y-4">
+							{activeSessions.map((session: SessionSummary) => (
+								<Link key={session.id} to={`/sessions/${session.id}`}>
+									<Card className="hover:shadow-lg transition">
+										<CardContent>
+											<div className="flex justify-between items-start mb-2">
+												<h3 className="font-semibold text-lg">{session.topic.title}</h3>
+												<StatusBadge variant="active">進行中</StatusBadge>
+											</div>
+											<div className="flex items-center gap-4 text-sm text-muted-foreground">
+												<span>{session.participant_count}頭が参加中</span>
+												<span>•</span>
+												<span>
+													ターン {session.current_turn} / {session.max_turns}
+												</span>
+											</div>
+										</CardContent>
+									</Card>
+								</Link>
+							))}
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Ranch Agents */}
+			<RanchAgentList agents={agents} feedbackAgentIds={feedbackAgentIds} />
+		</>
 	);
 }

@@ -140,6 +140,8 @@ export interface AgentSummary {
   /** Agent name */
   name: string;
   persona: AgentPersona;
+  /** Number of active sessions this agent is currently participating in */
+  active_session_count: number;
   /** Unix timestamp (seconds) when created */
   created_at: number;
 }
@@ -3039,10 +3041,99 @@ export function useGetApiSessionsIdTurns<TData = Awaited<ReturnType<typeof getAp
 
 export function useGetApiSessionsIdTurns<TData = Awaited<ReturnType<typeof getApiSessionsIdTurns>>, TError = ErrorType<ErrorResponse>>(
  id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiSessionsIdTurns>>, TError, TData>>, request?: SecondParameter<typeof customBackendClient>}
- , queryClient?: QueryClient 
+ , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetApiSessionsIdTurnsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+// ============================================================================
+// Feedback Requests (manually added - run `pnpm orval` to regenerate)
+// ============================================================================
+
+export interface FeedbackRequest {
+  agent_id: string;
+  agent_name: string;
+  session_id: string;
+  topic_title: string;
+  completed_at: number;
+}
+
+export interface ListFeedbackRequestsResponse {
+  feedback_requests: FeedbackRequest[];
+}
+
+export type getApiFeedbackRequestsResponse200 = {
+  data: ListFeedbackRequestsResponse
+  status: 200
+}
+
+export type getApiFeedbackRequestsResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getApiFeedbackRequestsResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type getApiFeedbackRequestsResponseSuccess = (getApiFeedbackRequestsResponse200) & {
+  headers: Headers;
+};
+export type getApiFeedbackRequestsResponseError = (getApiFeedbackRequestsResponse401 | getApiFeedbackRequestsResponse500) & {
+  headers: Headers;
+};
+
+export type getApiFeedbackRequestsResponse = (getApiFeedbackRequestsResponseSuccess | getApiFeedbackRequestsResponseError)
+
+export const getGetApiFeedbackRequestsUrl = () => {
+  return `/api/feedback-requests`
+}
+
+export const getApiFeedbackRequests = async ( options?: RequestInit): Promise<getApiFeedbackRequestsResponse> => {
+  return customBackendClient<getApiFeedbackRequestsResponse>(getGetApiFeedbackRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+  }
+);}
+
+export const getGetApiFeedbackRequestsQueryKey = () => {
+    return [
+    `/api/feedback-requests`
+    ] as const;
+    }
+
+export const getGetApiFeedbackRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getApiFeedbackRequests>>, TError = ErrorType<ErrorResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFeedbackRequests>>, TError, TData>>, request?: SecondParameter<typeof customBackendClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiFeedbackRequestsQueryKey();
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiFeedbackRequests>>> = ({ signal }) => getApiFeedbackRequests({ signal, ...requestOptions });
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiFeedbackRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiFeedbackRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getApiFeedbackRequests>>>
+export type GetApiFeedbackRequestsQueryError = ErrorType<ErrorResponse>
+
+/**
+ * @summary List pending feedback requests
+ */
+export function useGetApiFeedbackRequests<TData = Awaited<ReturnType<typeof getApiFeedbackRequests>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiFeedbackRequests>>, TError, TData>>, request?: SecondParameter<typeof customBackendClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiFeedbackRequestsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import { AgentCard } from "../../components/AgentCard";
+import { EmptyState, InfoAlert, LoadingState } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
+import { Card, CardContent } from "../../components/ui/card";
 import { type AgentSummary, useGetApiAgents } from "../../hooks/backend";
 
 export function meta() {
@@ -10,58 +12,51 @@ export function meta() {
 export default function AgentsIndex() {
 	const { data: agentsData, isLoading: loading, error } = useGetApiAgents();
 
-	// Extract agents safely
 	const agentsResponse = !error && agentsData?.data ? agentsData.data : null;
 	const agents = agentsResponse && "agents" in agentsResponse ? agentsResponse.agents : [];
 
 	return (
 		<ProtectedRoute>
 			<div>
-				<div className="flex justify-between items-center mb-6">
+				<div className="mb-6">
 					<h1 className="text-3xl font-bold">My Agents</h1>
-					<Link
-						to="/agents/new"
-						className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-					>
-						Create New Agent
-					</Link>
+					<p className="text-muted-foreground mt-1">
+						{agents.length > 0
+							? `${agents.length}体のエージェントを所有中`
+							: "エージェントを作って牧場を始めましょう"}
+					</p>
 				</div>
 
-				{loading && (
-					<div className="text-center py-12">
-						<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-						<p className="mt-4 text-gray-600">Loading agents...</p>
-					</div>
-				)}
+				{loading && <LoadingState message="Loading agents..." />}
 
 				{error && (
-					<div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-						<p className="text-red-700">
-							{error instanceof Error ? error.message : "Failed to load agents"}
-						</p>
-						<p className="text-red-600 text-sm mt-2">
-							Make sure the backend API is running and accessible.
-						</p>
-					</div>
+					<InfoAlert variant="error" className="mb-6">
+						<p>{error instanceof Error ? error.message : "Failed to load agents"}</p>
+					</InfoAlert>
 				)}
 
 				{!loading && !error && agents.length === 0 && (
-					<div className="text-center py-12 bg-gray-50 rounded-lg">
-						<p className="text-gray-600 mb-4">You haven't created any agents yet.</p>
-						<Link
-							to="/agents/new"
-							className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
-						>
-							Create Your First Agent
-						</Link>
-					</div>
+					<EmptyState
+						message="まだエージェントがいません"
+						description="最初の1体を作成して、熟議に送り出しましょう"
+						actionLabel="エージェントを作成する"
+						actionTo="/agents/new"
+					/>
 				)}
 
 				{!loading && !error && agents.length > 0 && (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 						{agents.map((agent: AgentSummary) => (
 							<AgentCard key={agent.id} agent={agent} />
 						))}
+						<Link to="/agents/new">
+							<Card className="hover:shadow-lg transition-shadow cursor-pointer border-dashed h-full flex items-center justify-center">
+								<CardContent className="text-center py-8">
+									<p className="text-3xl mb-2">+</p>
+									<p className="text-sm font-semibold text-muted-foreground">新規エージェント</p>
+								</CardContent>
+							</Card>
+						</Link>
 					</div>
 				)}
 			</div>

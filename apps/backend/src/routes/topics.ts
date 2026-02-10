@@ -90,7 +90,7 @@ const getTopicRoute = createRoute({
 		params: z.object({
 			id: z
 				.string()
-				.uuid()
+				.regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 				.openapi({
 					param: {
 						name: "id",

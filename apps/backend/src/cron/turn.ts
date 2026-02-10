@@ -93,22 +93,25 @@ async function enqueueTurn(env: Bindings, turn: Turn): Promise<void> {
 		throw new Error(`Session ${turn.session_id} not found`);
 	}
 
-	// 3. Get participants (ordered by speaking_order)
-	const participants = await getSessionParticipants(env.DB, turn.session_id);
+	// 3. Get first participant (ordered by speaking_order) for sequential processing
+	const firstParticipant = await getFirstSessionParticipant(env.DB, turn.session_id);
+	if (!firstParticipant) {
+		throw new Error(`No participants found for session ${turn.session_id}`);
+	}
 
-	// 4. Send Queue messages for each participant
-	const queueMessages = participants.map((agentId) => ({
+	// 4. Enqueue only the first participant; subsequent agents are chained by the consumer
+	await env.TURN_QUEUE.send({
 		turnId: turn.id,
 		sessionId: turn.session_id,
-		agentId,
+		agentId: firstParticipant.agentId,
 		turnNumber: turn.turn_number,
+		speakingOrder: firstParticipant.speakingOrder,
 		attempt: 0,
-	}));
+	});
 
-	// Send all messages to queue using sendBatch for efficiency
-	await env.TURN_QUEUE.sendBatch(queueMessages.map((msg) => ({ body: msg })));
-
-	console.log(`Enqueued ${participants.length} agents for turn ${turn.id}`);
+	console.log(
+		`Enqueued first agent (order ${firstParticipant.speakingOrder}) for turn ${turn.id}`,
+	);
 }
 
 /**
@@ -143,18 +146,23 @@ async function getSession(
 }
 
 /**
- * Get session participants (agent IDs) ordered by speaking_order
+ * Get the first session participant (lowest speaking_order)
  */
-async function getSessionParticipants(db: D1Database, sessionId: string): Promise<string[]> {
+async function getFirstSessionParticipant(
+	db: D1Database,
+	sessionId: string,
+): Promise<{ agentId: string; speakingOrder: number } | null> {
 	const result = await db
 		.prepare(
-			`SELECT agent_id
+			`SELECT agent_id, speaking_order
        FROM session_participants
        WHERE session_id = ?
-       ORDER BY speaking_order ASC`,
+       ORDER BY speaking_order ASC
+       LIMIT 1`,
 		)
 		.bind(sessionId)
-		.all<{ agent_id: string }>();
+		.first<{ agent_id: string; speaking_order: number }>();
 
-	return result.results.map((r) => r.agent_id);
+	if (!result) return null;
+	return { agentId: result.agent_id, speakingOrder: result.speaking_order };
 }

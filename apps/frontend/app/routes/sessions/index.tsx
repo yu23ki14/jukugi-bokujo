@@ -1,7 +1,23 @@
 import { Link, useSearchParams } from "react-router";
+import {
+	EmptyState,
+	FilterTabs,
+	InfoAlert,
+	LoadingState,
+	StatusBadge,
+} from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
 import { type SessionSummary, useGetApiSessions } from "../../hooks/backend";
 import { formatDateTime } from "../../utils/date";
+
+const STATUS_LABELS: Record<string, string> = {
+	active: "議論中",
+	completed: "終了",
+	cancelled: "中止",
+	pending: "準備中",
+};
 
 export function meta() {
 	return [{ title: "Sessions - Jukugi Bokujo" }];
@@ -45,97 +61,43 @@ export default function SessionsIndex() {
 		setSearchParams({ status, limit: limit.toString(), offset: newOffset.toString() });
 	}
 
-	function getStatusBadge(sessionStatus: string) {
-		const badges = {
-			pending: "bg-gray-100 text-gray-700",
-			active: "bg-blue-100 text-blue-700",
-			completed: "bg-green-100 text-green-700",
-			cancelled: "bg-red-100 text-red-700",
-		};
-		return badges[sessionStatus as keyof typeof badges] || badges.pending;
-	}
-
 	return (
 		<ProtectedRoute>
-			<div>
-				<h1 className="text-3xl font-bold mb-6">Deliberation Sessions</h1>
-
-				{/* Filters */}
-				<div className="mb-6 flex gap-2 flex-wrap">
-					<button
-						type="button"
-						onClick={() => handleStatusChange("all")}
-						className={`px-4 py-2 rounded transition ${
-							status === "all"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-						}`}
-					>
-						All
-					</button>
-					<button
-						type="button"
-						onClick={() => handleStatusChange("active")}
-						className={`px-4 py-2 rounded transition ${
-							status === "active"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-						}`}
-					>
-						Active
-					</button>
-					<button
-						type="button"
-						onClick={() => handleStatusChange("completed")}
-						className={`px-4 py-2 rounded transition ${
-							status === "completed"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-						}`}
-					>
-						Completed
-					</button>
-					<button
-						type="button"
-						onClick={() => handleStatusChange("pending")}
-						className={`px-4 py-2 rounded transition ${
-							status === "pending"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-						}`}
-					>
-						Pending
-					</button>
+			<div className="max-w-2xl mx-auto">
+				{/* Header */}
+				<div className="text-center mb-6">
+					<p className="text-5xl mb-3">🏟️</p>
+					<h1 className="text-2xl font-bold mb-1">熟議アリーナ</h1>
+					<p className="text-muted-foreground">エージェントたちの議論を観戦しよう</p>
 				</div>
 
-				{loading && (
-					<div className="text-center py-12">
-						<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-						<p className="mt-4 text-gray-600">Loading sessions...</p>
-					</div>
-				)}
+				{/* Filters */}
+				<div className="mb-6">
+					<FilterTabs
+						options={[
+							{ value: "all", label: "すべて" },
+							{ value: "active", label: "議論中" },
+							{ value: "completed", label: "決着済み" },
+						]}
+						value={status}
+						onChange={handleStatusChange}
+					/>
+				</div>
+
+				{loading && <LoadingState message="セッションを読み込み中..." />}
 
 				{error && (
-					<div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-						<p className="text-red-700">
-							{error instanceof Error ? error.message : "Failed to load sessions"}
-						</p>
-					</div>
+					<InfoAlert variant="error" className="mb-6">
+						{error instanceof Error ? error.message : "セッションの読み込みに失敗しました"}
+					</InfoAlert>
 				)}
 
 				{!loading && !error && sessions.length === 0 && (
-					<div className="text-center py-12 bg-gray-50 rounded-lg">
-						<p className="text-gray-600">No sessions found.</p>
-						{status !== "all" && (
-							<button
-								type="button"
-								onClick={() => handleStatusChange("all")}
-								className="mt-4 text-blue-600 hover:text-blue-800"
-							>
-								View all sessions
-							</button>
-						)}
-					</div>
+					<EmptyState
+						message="まだセッションがありません"
+						actionLabel={status !== "all" ? "すべてのセッションを見る" : undefined}
+						onAction={status !== "all" ? () => handleStatusChange("all") : undefined}
+					/>
 				)}
 
 				{!loading && !error && sessions.length > 0 && (
@@ -145,37 +107,71 @@ export default function SessionsIndex() {
 								<Link
 									key={session.id}
 									to={`/sessions/${session.id}`}
-									className="block bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
+									className="block hover:shadow-lg transition"
 								>
-									<div className="flex justify-between items-start mb-3">
-										<div className="flex-1">
-											<h3 className="font-semibold text-lg mb-1">{session.topic.title}</h3>
-											<div className="flex items-center gap-2 text-sm text-gray-600">
-												<span
-													className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(session.status)}`}
+									<Card>
+										<CardContent>
+											<div className="flex justify-between items-start mb-3">
+												<h3 className="font-semibold text-lg flex-1">{session.topic.title}</h3>
+												<StatusBadge
+													variant={
+														session.status === "active"
+															? "active"
+															: session.status === "completed"
+																? "completed"
+																: session.status === "cancelled"
+																	? "cancelled"
+																	: "pending"
+													}
 												>
-													{session.status}
-												</span>
-												<span>•</span>
-												<span>{session.participant_count} participants</span>
-												<span>•</span>
-												<span>
-													Turn {session.current_turn} / {session.max_turns}
-												</span>
+													{STATUS_LABELS[session.status] || session.status}
+												</StatusBadge>
 											</div>
-										</div>
-									</div>
 
-									{session.started_at && (
-										<p className="text-xs text-gray-500">
-											Started: {formatDateTime(session.started_at)}
-										</p>
-									)}
-									{session.completed_at && (
-										<p className="text-xs text-gray-500">
-											Completed: {formatDateTime(session.completed_at)}
-										</p>
-									)}
+											{/* Turn Progress */}
+											<div className="mb-3">
+												<div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+													<span>
+														ターン {session.current_turn} / {session.max_turns}
+													</span>
+													<span>{session.participant_count}体参戦</span>
+												</div>
+												<div className="flex gap-1">
+													{Array.from({ length: session.max_turns }).map((_, i) => (
+														<div
+															key={`turn-${session.id}-${i}`}
+															className={`h-1.5 flex-1 rounded-full ${
+																i < session.current_turn
+																	? session.status === "active"
+																		? "bg-primary"
+																		: session.status === "completed"
+																			? "bg-green-500"
+																			: "bg-muted-foreground/40"
+																	: session.status === "completed"
+																		? "bg-green-500"
+																		: "bg-muted"
+															}`}
+														/>
+													))}
+												</div>
+											</div>
+
+											{/* Timestamps */}
+											<div className="text-xs text-muted-foreground">
+												{session.status === "active" && session.started_at && (
+													<span>開始: {formatDateTime(session.started_at)}</span>
+												)}
+												{session.status === "completed" && session.completed_at && (
+													<span>終了: {formatDateTime(session.completed_at)}</span>
+												)}
+												{session.status !== "active" &&
+													session.status !== "completed" &&
+													session.started_at && (
+														<span>開始: {formatDateTime(session.started_at)}</span>
+													)}
+											</div>
+										</CardContent>
+									</Card>
 								</Link>
 							))}
 						</div>
@@ -183,25 +179,25 @@ export default function SessionsIndex() {
 						{/* Pagination */}
 						{total > limit && (
 							<div className="flex justify-center gap-4 items-center">
-								<button
-									type="button"
+								<Button
+									variant="outline"
+									size="sm"
 									onClick={() => handlePagination(Math.max(0, offset - limit))}
 									disabled={offset === 0}
-									className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
 								>
-									Previous
-								</button>
-								<span className="text-sm text-gray-600">
-									{offset + 1} - {Math.min(offset + limit, total)} of {total}
+									前へ
+								</Button>
+								<span className="text-sm text-muted-foreground">
+									{offset + 1} - {Math.min(offset + limit, total)} / {total}件
 								</span>
-								<button
-									type="button"
+								<Button
+									variant="outline"
+									size="sm"
 									onClick={() => handlePagination(offset + limit)}
 									disabled={offset + limit >= total}
-									className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
 								>
-									Next
-								</button>
+									次へ
+								</Button>
 							</div>
 						)}
 					</div>

@@ -18,6 +18,9 @@ export interface TurnQueueMessage {
 	/** Turn number */
 	turnNumber: number;
 
+	/** Speaking order of this agent (1-based) */
+	speakingOrder: number;
+
 	/** Number of attempts (for tracking) */
 	attempt: number;
 }

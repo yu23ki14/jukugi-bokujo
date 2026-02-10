@@ -83,6 +83,10 @@ export const AgentSummarySchema = z
 			example: "My First Agent",
 		}),
 		persona: AgentPersonaSchema,
+		active_session_count: z.number().int().openapi({
+			description: "Number of active sessions this agent is currently participating in",
+			example: 1,
+		}),
 		created_at: z.number().int().openapi({
 			description: "Unix timestamp (seconds) when created",
 			example: 1704067200,

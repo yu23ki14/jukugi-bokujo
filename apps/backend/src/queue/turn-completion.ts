@@ -14,8 +14,8 @@ import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
 /**
- * Check if a turn is complete and handle completion
- * Returns true if turn was completed, false if still in progress
+ * Complete a turn and advance to the next turn or complete the session.
+ * Called when all agents in speaking_order have been processed (regardless of individual success).
  */
 export async function checkAndCompleteTurn(
 	env: Bindings,
@@ -23,72 +23,45 @@ export async function checkAndCompleteTurn(
 	sessionId: string,
 	turnNumber: number,
 ): Promise<boolean> {
-	// 1. Get expected participant count
-	const participantCount = await env.DB.prepare(
-		"SELECT COUNT(*) as count FROM session_participants WHERE session_id = ?",
-	)
-		.bind(sessionId)
-		.first<{ count: number }>();
+	console.log(`[Turn Completion] Completing turn ${turnId} (turn ${turnNumber})`);
 
-	if (!participantCount) {
-		console.error(`No participants found for session ${sessionId}`);
-		return false;
-	}
+	// 1. Mark turn as completed
+	const completedAt = getCurrentTimestamp();
+	await env.DB.prepare("UPDATE turns SET status = 'completed', completed_at = ? WHERE id = ?")
+		.bind(completedAt, turnId)
+		.run();
 
-	// 2. Get actual statement count for this turn
-	const statementCount = await env.DB.prepare(
-		"SELECT COUNT(*) as count FROM statements WHERE turn_id = ?",
-	)
-		.bind(turnId)
-		.first<{ count: number }>();
+	// 2. Update session current_turn
+	await env.DB.prepare("UPDATE sessions SET current_turn = ?, updated_at = ? WHERE id = ?")
+		.bind(turnNumber, completedAt, sessionId)
+		.run();
 
-	// 3. Check if all statements are generated
-	if (statementCount && statementCount.count >= participantCount.count) {
-		console.log(
-			`[Turn Completion] Turn ${turnId} complete: ${statementCount.count}/${participantCount.count} statements`,
-		);
-
-		// 4. Mark turn as completed
-		const completedAt = getCurrentTimestamp();
-		await env.DB.prepare("UPDATE turns SET status = 'completed', completed_at = ? WHERE id = ?")
-			.bind(completedAt, turnId)
-			.run();
-
-		// 5. Update session current_turn
-		await env.DB.prepare("UPDATE sessions SET current_turn = ?, updated_at = ? WHERE id = ?")
-			.bind(turnNumber, completedAt, sessionId)
-			.run();
-
-		// 6. Get session info to check max_turns
-		const session = await getSession(env.DB, sessionId);
-		if (!session) {
-			console.error(`Session ${sessionId} not found`);
-			return true;
-		}
-
-		// 7. Check if session is complete
-		if (turnNumber >= session.max_turns) {
-			console.log(`[Session Completion] Session ${sessionId} reached max turns, completing...`);
-			await completeSession(env, session);
-		} else {
-			// 8. Create next turn
-			const nextTurnId = generateUUID();
-			await env.DB.prepare(
-				"INSERT INTO turns (id, session_id, turn_number, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
-			)
-				.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
-				.run();
-
-			console.log(`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`);
-		}
-
+	// 3. Get session info to check max_turns
+	const session = await getSession(env.DB, sessionId);
+	if (!session) {
+		console.error(`Session ${sessionId} not found`);
 		return true;
 	}
 
-	console.log(
-		`[Turn Completion] Turn ${turnId} in progress: ${statementCount?.count || 0}/${participantCount.count} statements`,
-	);
-	return false;
+	// 4. Check if session is complete
+	if (turnNumber >= session.max_turns) {
+		console.log(`[Session Completion] Session ${sessionId} reached max turns, completing...`);
+		await completeSession(env, session);
+	} else {
+		// 5. Create next turn
+		const nextTurnId = generateUUID();
+		await env.DB.prepare(
+			"INSERT INTO turns (id, session_id, turn_number, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
+		)
+			.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
+			.run();
+
+		console.log(
+			`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`,
+		);
+	}
+
+	return true;
 }
 
 /**

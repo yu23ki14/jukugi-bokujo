@@ -186,13 +186,21 @@ agents.openapi(listAgentsRoute, async (c) => {
 
 	try {
 		const result = await c.env.DB.prepare(
-			`SELECT id, user_id, name, persona, created_at, updated_at
-       FROM agents
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
+			`SELECT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at,
+        COALESCE(asc_count.active_count, 0) as active_session_count
+       FROM agents a
+       LEFT JOIN (
+         SELECT sp.agent_id, COUNT(*) as active_count
+         FROM session_participants sp
+         JOIN sessions s ON sp.session_id = s.id
+         WHERE s.status = 'active'
+         GROUP BY sp.agent_id
+       ) asc_count ON a.id = asc_count.agent_id
+       WHERE a.user_id = ?
+       ORDER BY a.created_at DESC`,
 		)
 			.bind(userId)
-			.all<Agent>();
+			.all<Agent & { active_session_count: number }>();
 
 		const agentsWithPersona = result.results.map((agent) => {
 			const parsed = parseAgentPersona(agent);
@@ -200,6 +208,7 @@ agents.openapi(listAgentsRoute, async (c) => {
 				id: parsed.id,
 				name: parsed.name,
 				persona: parsed.persona,
+				active_session_count: agent.active_session_count,
 				created_at: parsed.created_at,
 			};
 		});
