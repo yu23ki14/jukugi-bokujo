@@ -9,7 +9,7 @@ import {
 	updateAgentPersona,
 } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent, Session, Statement, UserInput } from "../types/database";
+import type { Agent, Feedback, Session, Statement } from "../types/database";
 import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -222,19 +222,18 @@ async function updateAgentPersonas(env: Bindings, sessionId: string): Promise<vo
 }
 
 /**
- * Update a single agent's persona
+ * Update a single agent's persona based on unapplied feedbacks
  */
 async function updateSingleAgentPersona(env: Bindings, agentId: string): Promise<void> {
-	// Fetch both user inputs and agent data in parallel
-	const [unappliedInputs, agent] = await Promise.all([
+	const [unappliedFeedbacks, agent] = await Promise.all([
 		env.DB.prepare(
-			`SELECT id, input_type, content, created_at
-       FROM user_inputs
+			`SELECT id, agent_id, session_id, content, applied_at, created_at
+       FROM feedbacks
        WHERE agent_id = ? AND applied_at IS NULL
        ORDER BY created_at ASC`,
 		)
 			.bind(agentId)
-			.all<UserInput>(),
+			.all<Feedback>(),
 		env.DB.prepare(
 			"SELECT id, user_id, name, persona, created_at, updated_at FROM agents WHERE id = ?",
 		)
@@ -242,9 +241,7 @@ async function updateSingleAgentPersona(env: Bindings, agentId: string): Promise
 			.first<Agent>(),
 	]);
 
-	// Validation
-	if (unappliedInputs.results.length === 0) {
-		// No unapplied inputs, skip update
+	if (unappliedFeedbacks.results.length === 0) {
 		return;
 	}
 
@@ -254,24 +251,22 @@ async function updateSingleAgentPersona(env: Bindings, agentId: string): Promise
 	}
 
 	console.log(
-		`[Session Completion] Updating persona for agent ${agent.name} with ${unappliedInputs.results.length} inputs`,
+		`[Session Completion] Updating persona for agent ${agent.name} with ${unappliedFeedbacks.results.length} feedbacks`,
 	);
 
-	// Update persona using LLM
-	const newPersona = await updateAgentPersona(env, agent, unappliedInputs.results);
+	const newPersona = await updateAgentPersona(env, agent, unappliedFeedbacks.results);
 
-	// Save updated persona
 	const now = getCurrentTimestamp();
 	await env.DB.prepare("UPDATE agents SET persona = ?, updated_at = ? WHERE id = ?")
 		.bind(JSON.stringify(newPersona), now, agentId)
 		.run();
 
-	// Mark user inputs as applied (batch update for better performance)
-	if (unappliedInputs.results.length > 0) {
-		const inputIds = unappliedInputs.results.map((i) => i.id);
-		const placeholders = inputIds.map(() => "?").join(",");
-		await env.DB.prepare(`UPDATE user_inputs SET applied_at = ? WHERE id IN (${placeholders})`)
-			.bind(now, ...inputIds)
+	// Mark feedbacks as applied
+	if (unappliedFeedbacks.results.length > 0) {
+		const feedbackIds = unappliedFeedbacks.results.map((f) => f.id);
+		const placeholders = feedbackIds.map(() => "?").join(",");
+		await env.DB.prepare(`UPDATE feedbacks SET applied_at = ? WHERE id IN (${placeholders})`)
+			.bind(now, ...feedbackIds)
 			.run();
 	}
 

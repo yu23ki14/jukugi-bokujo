@@ -65,8 +65,8 @@ export interface UpdateAgentResponse {
 // ============================================================================
 
 export interface CreateKnowledgeRequest {
-	title: string;
-	content: string;
+	title: string; // 1-30 chars
+	content: string; // 1-500 chars
 }
 
 export interface CreateKnowledgeResponse {
@@ -87,30 +87,80 @@ export interface ListKnowledgeResponse {
 }
 
 // ============================================================================
-// User Input API Types
+// Direction API Types
 // ============================================================================
 
-export interface CreateUserInputRequest {
-	input_type: "direction" | "feedback";
+export interface CreateDirectionRequest {
+	session_id: string;
+	turn_number: number;
 	content: string;
 }
 
-export interface CreateUserInputResponse {
+export interface CreateDirectionResponse {
 	id: string;
 	agent_id: string;
-	input_type: string;
+	session_id: string;
+	turn_number: number;
 	content: string;
 	created_at: number;
 }
 
-export interface ListUserInputsResponse {
-	inputs: Array<{
+export interface ListDirectionsResponse {
+	directions: Array<{
 		id: string;
-		input_type: string;
+		session_id: string;
+		turn_number: number;
+		content: string;
+		created_at: number;
+	}>;
+}
+
+// ============================================================================
+// Feedback API Types
+// ============================================================================
+
+export interface CreateFeedbackRequest {
+	session_id: string;
+	content: string;
+}
+
+export interface CreateFeedbackResponse {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	content: string;
+	created_at: number;
+}
+
+export interface GetFeedbackResponse {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	content: string;
+	applied_at: number | null;
+	created_at: number;
+}
+
+export interface ListFeedbacksResponse {
+	feedbacks: Array<{
+		id: string;
+		session_id: string;
 		content: string;
 		applied_at: number | null;
 		created_at: number;
 	}>;
+}
+
+// ============================================================================
+// Session Strategy API Types
+// ============================================================================
+
+export interface GetSessionStrategyResponse {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	strategy: string;
+	created_at: number;
 }
 
 // ============================================================================

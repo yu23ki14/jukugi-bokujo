@@ -13,6 +13,7 @@ export default [
 	route("agents/:id", "routes/agents/detail.tsx"),
 	route("agents/:id/knowledge", "routes/agents/knowledge.tsx"),
 	route("agents/:id/direction", "routes/agents/direction.tsx"),
+	route("agents/:id/feedback", "routes/agents/feedback.tsx"),
 
 	route("sessions", "routes/sessions/index.tsx"),
 	route("sessions/:id", "routes/sessions/detail.tsx"),

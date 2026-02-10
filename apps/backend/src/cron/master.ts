@@ -8,8 +8,9 @@ import {
 	SESSION_MAX_TURNS,
 	SESSION_PARTICIPANT_COUNT,
 } from "../config/constants";
+import { generateSessionStrategy } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent, Topic } from "../types/database";
+import type { Agent, Feedback, Statement, Topic } from "../types/database";
 import { getCurrentTimestamp, getTimestampDaysAgo } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -124,7 +125,16 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		`Verification: ${verifyResult?.count || 0} participants added to session ${sessionId}`,
 	);
 
-	// 5. Update session status to active
+	// 5. Generate session strategies from feedback for each agent
+	for (const agent of agents) {
+		try {
+			await generateAndSaveStrategy(env, agent, sessionId);
+		} catch (error) {
+			console.error(`Failed to generate strategy for agent ${agent.id}:`, error);
+		}
+	}
+
+	// 6. Update session status to active
 	await env.DB.prepare(
 		`UPDATE sessions
      SET status = 'active',
@@ -136,7 +146,7 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 		.bind(now, agents.length, now, sessionId)
 		.run();
 
-	// 6. Create initial turn (turn 1)
+	// 7. Create initial turn (turn 1)
 	const turnId = generateUUID();
 	await env.DB.prepare(
 		`INSERT INTO turns (id, session_id, turn_number, status, created_at)
@@ -151,7 +161,8 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 /**
  * Select active agents for deliberation
  * Criteria:
- * - User input within last N days, OR
+ * - Feedback within last N days, OR
+ * - Knowledge updated within last N days, OR
  * - Agent created within last N days
  */
 async function selectActiveAgents(db: D1Database, count: number): Promise<Agent[]> {
@@ -161,15 +172,78 @@ async function selectActiveAgents(db: D1Database, count: number): Promise<Agent[
 		.prepare(
 			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
        FROM agents a
-       LEFT JOIN user_inputs ui ON a.id = ui.agent_id
-       WHERE ui.created_at >= ?          -- User input within threshold days
-          OR a.created_at >= ?            -- OR agent created within threshold days
+       LEFT JOIN feedbacks f ON a.id = f.agent_id
+       LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
+       WHERE f.created_at >= ?
+          OR ke.created_at >= ?
+          OR a.created_at >= ?
        GROUP BY a.id
        ORDER BY RANDOM()
        LIMIT ?`,
 		)
-		.bind(thresholdTimestamp, thresholdTimestamp, count)
+		.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp, count)
 		.all<Agent>();
 
 	return result.results;
+}
+
+/**
+ * Generate and save a session strategy for an agent based on their latest feedback
+ */
+async function generateAndSaveStrategy(
+	env: Bindings,
+	agent: Agent,
+	sessionId: string,
+): Promise<void> {
+	// Find the most recent completed session this agent participated in
+	const lastSession = await env.DB.prepare(
+		`SELECT s.id FROM sessions s
+     JOIN session_participants sp ON s.id = sp.session_id
+     WHERE sp.agent_id = ? AND s.status = 'completed'
+     ORDER BY s.completed_at DESC LIMIT 1`,
+	)
+		.bind(agent.id)
+		.first<{ id: string }>();
+
+	if (!lastSession) return;
+
+	// Get feedback for that session
+	const feedback = await env.DB.prepare(
+		`SELECT id, agent_id, session_id, content, applied_at, created_at
+     FROM feedbacks
+     WHERE agent_id = ? AND session_id = ?
+     LIMIT 1`,
+	)
+		.bind(agent.id, lastSession.id)
+		.first<Feedback>();
+
+	if (!feedback) return;
+
+	// Get previous statements from that session
+	const previousStatements = await env.DB.prepare(
+		`SELECT s.id, s.turn_id, s.agent_id, s.content, s.thinking_process, s.created_at,
+            a.name as agent_name, t.turn_number
+     FROM statements s
+     JOIN agents a ON s.agent_id = a.id
+     JOIN turns t ON s.turn_id = t.id
+     WHERE t.session_id = ?
+     ORDER BY t.turn_number ASC, s.created_at ASC`,
+	)
+		.bind(lastSession.id)
+		.all<Statement & { agent_name: string; turn_number: number }>();
+
+	// Generate strategy via LLM
+	const strategy = await generateSessionStrategy(env, agent, feedback, previousStatements.results);
+
+	// Save to session_strategies
+	const strategyId = generateUUID();
+	const now = getCurrentTimestamp();
+	await env.DB.prepare(
+		`INSERT INTO session_strategies (id, agent_id, session_id, feedback_id, strategy, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+	)
+		.bind(strategyId, agent.id, sessionId, feedback.id, strategy, now)
+		.run();
+
+	console.log(`[Master Cron] Generated strategy for agent ${agent.name} in session ${sessionId}`);
 }

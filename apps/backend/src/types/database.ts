@@ -152,16 +152,40 @@ export interface KnowledgeEntry {
 }
 
 // ============================================================================
-// User Input Types
+// Direction Types
 // ============================================================================
 
-export type UserInputType = "direction" | "knowledge" | "feedback";
-
-export interface UserInput {
+export interface Direction {
 	id: string;
 	agent_id: string;
-	input_type: UserInputType;
+	session_id: string;
+	turn_number: number;
+	content: string;
+	created_at: number;
+}
+
+// ============================================================================
+// Feedback Types
+// ============================================================================
+
+export interface Feedback {
+	id: string;
+	agent_id: string;
+	session_id: string;
 	content: string;
 	applied_at: number | null;
+	created_at: number;
+}
+
+// ============================================================================
+// Session Strategy Types
+// ============================================================================
+
+export interface SessionStrategy {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	feedback_id: string | null;
+	strategy: string;
 	created_at: number;
 }

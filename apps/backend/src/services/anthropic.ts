@@ -14,10 +14,10 @@ import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
 	AgentPersona,
+	Feedback,
 	JudgeVerdict,
 	Session,
 	Statement,
-	UserInput,
 } from "../types/database";
 import { parseAgentPersona } from "../utils/database";
 
@@ -370,15 +370,14 @@ JSONのみを出力してください。`;
 }
 
 /**
- * Update agent persona based on user inputs
+ * Update agent persona based on feedbacks
  */
 export async function updateAgentPersona(
 	env: Bindings,
 	agent: Agent,
-	userInputs: UserInput[],
+	feedbacks: Feedback[],
 ): Promise<AgentPersona> {
-	if (userInputs.length === 0) {
-		// No user inputs to apply, return current persona
+	if (feedbacks.length === 0) {
 		return parseAgentPersona(agent).persona;
 	}
 
@@ -389,11 +388,11 @@ export async function updateAgentPersona(
 	const userPrompt = `## 現在の人格
 ${JSON.stringify(agentWithPersona.persona, null, 2)}
 
-## ユーザーからの新しい方針・フィードバック
-${userInputs.map((i) => `[${i.input_type}] ${i.content}`).join("\n")}
+## ユーザーからのフィードバック
+${feedbacks.map((f) => f.content).join("\n---\n")}
 
 ## 指示
-上記の人格に、ユーザーの方針・フィードバックを反映した新しい人格を生成してください。
+上記の人格に、ユーザーのフィードバックを反映した新しい人格を生成してください。
 既存の人格を尊重しつつ、徐々にユーザーの意向を反映させてください。
 
 JSON形式で出力してください：
@@ -415,7 +414,6 @@ JSONのみを出力してください。`;
 			messages: [{ role: "user", content: userPrompt }],
 		});
 
-		// Parse JSON from response
 		const jsonMatch = response.content.match(/\{[\s\S]*\}/);
 		if (!jsonMatch) {
 			throw new Error("Failed to extract JSON from response");
@@ -423,7 +421,6 @@ JSONのみを出力してください。`;
 
 		const newPersona = JSON.parse(jsonMatch[0]) as AgentPersona;
 
-		// Validate persona structure
 		if (
 			!Array.isArray(newPersona.core_values) ||
 			!newPersona.thinking_style ||
@@ -433,13 +430,58 @@ JSONのみを出力してください。`;
 			throw new Error("Invalid persona structure");
 		}
 
-		// Ensure version is incremented
 		newPersona.version = agentWithPersona.persona.version + 1;
 
 		return newPersona;
 	} catch (error) {
 		console.error("Failed to update persona:", error);
-		// Return current persona if update fails
 		return agentWithPersona.persona;
+	}
+}
+
+/**
+ * Generate session strategy from feedback and previous statements
+ */
+export async function generateSessionStrategy(
+	env: Bindings,
+	agent: Agent,
+	feedback: Feedback,
+	previousStatements: Array<Statement & { agent_name: string; turn_number: number }>,
+): Promise<string> {
+	const agentWithPersona = parseAgentPersona(agent);
+
+	const systemPrompt = "あなたはAI熟議エージェントの戦略立案を支援する専門家です。";
+
+	const myStatements = previousStatements
+		.filter((s) => s.agent_id === agent.id)
+		.map((s) => `ターン${s.turn_number}: ${s.content}`)
+		.join("\n");
+
+	const userPrompt = `## あなたの人格
+${JSON.stringify(agentWithPersona.persona, null, 2)}
+
+## 前回のセッションでのあなたの発言
+${myStatements || "（前回の発言はありません）"}
+
+## ユーザーからのフィードバック
+${feedback.content}
+
+## 指示
+上記のフィードバックと前回の自分の発言を踏まえて、次回の熟議に臨む方針を100-200文字で簡潔にまとめてください。
+自分がどういう姿勢で議論に参加し、何を意識すべきかを明確にしてください。
+方針のテキストのみを出力してください。`;
+
+	try {
+		const response = await callAnthropicAPI(env, {
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.STRATEGY_GENERATION,
+			system: systemPrompt,
+			messages: [{ role: "user", content: userPrompt }],
+		});
+
+		return response.content;
+	} catch (error) {
+		console.error("Failed to generate session strategy:", error);
+		throw error;
 	}
 }

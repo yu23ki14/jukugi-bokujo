@@ -78,6 +78,11 @@ export const LLM_TOKEN_LIMITS = {
 	 * Maximum tokens for statement generation during turns
 	 */
 	STATEMENT: 3000,
+
+	/**
+	 * Maximum tokens for session strategy generation from feedback
+	 */
+	STRATEGY_GENERATION: 2000,
 } as const;
 
 // ============================================================================
@@ -85,14 +90,29 @@ export const LLM_TOKEN_LIMITS = {
 // ============================================================================
 
 /**
- * Maximum number of knowledge entries to fetch per agent
+ * Maximum number of knowledge slots per agent
  */
-export const KNOWLEDGE_ENTRIES_LIMIT = 50;
+export const KNOWLEDGE_SLOTS_LIMIT = 10;
 
 /**
- * Maximum number of user inputs to fetch per agent
+ * Maximum length for direction content
  */
-export const USER_INPUTS_LIMIT = 30;
+export const DIRECTION_MAX_LENGTH = 80;
+
+/**
+ * Maximum length for feedback content
+ */
+export const FEEDBACK_MAX_LENGTH = 400;
+
+/**
+ * Maximum length for knowledge title
+ */
+export const KNOWLEDGE_TITLE_MAX_LENGTH = 30;
+
+/**
+ * Maximum length for knowledge content
+ */
+export const KNOWLEDGE_CONTENT_MAX_LENGTH = 500;
 
 /**
  * Maximum number of previous statements to fetch for context

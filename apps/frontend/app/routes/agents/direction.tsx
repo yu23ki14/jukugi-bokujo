@@ -2,212 +2,201 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import {
-	useGetApiAgentsAgentIdInputs,
+	useGetApiAgentsAgentIdDirections,
 	useGetApiAgentsId,
-	usePostApiAgentsAgentIdInputs,
+	useGetApiSessionsId,
+	usePostApiAgentsAgentIdDirections,
 } from "../../hooks/backend";
 import { formatDateTime } from "../../utils/date";
 
 export function meta() {
-	return [{ title: "Agent Direction - Jukugi Bokujo" }];
+	return [{ title: "Direction - Jukugi Bokujo" }];
 }
 
 export default function AgentDirection() {
 	const { id } = useParams();
 
-	// Fetch agent and inputs data
 	const {
 		data: agentData,
 		isLoading: agentLoading,
 		error: agentError,
 	} = useGetApiAgentsId(id ?? "");
-	const {
-		data: inputsData,
-		isLoading: inputsLoading,
-		error: inputsError,
-		refetch: refetchInputs,
-	} = useGetApiAgentsAgentIdInputs(id ?? "");
 
-	const createInputMutation = usePostApiAgentsAgentIdInputs();
-
-	// Extract data with type narrowing
 	const agent = !agentError && agentData?.data && "name" in agentData.data ? agentData.data : null;
-	const inputsResponse = !inputsError && inputsData?.data ? inputsData.data : null;
-	const inputs = inputsResponse && "inputs" in inputsResponse ? inputsResponse.inputs : [];
-
-	const loading = agentLoading || inputsLoading;
-	const error = agentError || inputsError;
 
 	// Form state
-	const [inputType, setInputType] = useState<"direction" | "feedback">("direction");
+	const [sessionId, setSessionId] = useState("");
+	const [turnNumber, setTurnNumber] = useState(1);
 	const [content, setContent] = useState("");
+
+	// Fetch directions filtered by session
+	const { data: directionsData, refetch: refetchDirections } = useGetApiAgentsAgentIdDirections(
+		id ?? "",
+		sessionId ? { session_id: sessionId } : {},
+	);
+
+	const directionsResponse = directionsData?.data;
+	const directions =
+		directionsResponse && "directions" in directionsResponse ? directionsResponse.directions : [];
+
+	// Fetch session info when sessionId is entered
+	const { data: sessionData } = useGetApiSessionsId(sessionId, {
+		query: { enabled: !!sessionId },
+	});
+	const session = sessionData?.data && "status" in sessionData.data ? sessionData.data : null;
+
+	const createMutation = usePostApiAgentsAgentIdDirections();
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
-
-		if (!id || !content.trim()) {
-			return;
-		}
+		if (!id || !content.trim() || !sessionId) return;
 
 		try {
-			await createInputMutation.mutateAsync({
+			await createMutation.mutateAsync({
 				agentId: id,
 				data: {
-					input_type: inputType,
+					session_id: sessionId,
+					turn_number: turnNumber,
 					content: content.trim(),
 				},
 			});
-
 			setContent("");
-			refetchInputs();
+			refetchDirections();
 		} catch (err) {
-			alert(err instanceof Error ? err.message : "Failed to add input");
+			alert(err instanceof Error ? err.message : "Failed to add direction");
 		}
 	}
 
 	return (
 		<ProtectedRoute>
 			<div className="max-w-4xl mx-auto">
-				{loading && (
+				{agentLoading && (
 					<div className="text-center py-12">
 						<div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
 						<p className="mt-4 text-gray-600">Loading...</p>
 					</div>
 				)}
 
-				{error && (
+				{agentError && (
 					<div className="bg-red-50 border-l-4 border-red-400 p-4">
 						<p className="text-red-700">
-							{error instanceof Error ? error.message : "Failed to load data"}
+							{agentError instanceof Error ? agentError.message : "Failed to load data"}
 						</p>
 					</div>
 				)}
 
-				{!loading && !error && agent && (
+				{!agentLoading && !agentError && agent && (
 					<div>
 						<div className="mb-6">
 							<Link to={`/agents/${id}`} className="text-blue-600 hover:text-blue-800 text-sm">
-								← Back to {agent.name}
+								&larr; Back to {agent.name}
 							</Link>
 						</div>
 
-						<h1 className="text-3xl font-bold mb-6">Direction & Feedback</h1>
+						<h1 className="text-3xl font-bold mb-6">Direction</h1>
 
 						<div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-							<h3 className="font-semibold text-blue-900 mb-2">How to guide your agent</h3>
+							<h3 className="font-semibold text-blue-900 mb-2">Direction</h3>
 							<ul className="text-blue-800 text-sm space-y-1">
-								<li>
-									<strong>Direction:</strong> Set long-term goals and values for your agent
-								</li>
-								<li>
-									<strong>Feedback:</strong> Provide specific feedback on agent's recent behavior
-								</li>
-								<li>Your inputs will gradually shape the agent's persona over time</li>
-								<li>Changes will be reflected after the agent completes deliberation sessions</li>
+								<li>80 characters max short instruction for each turn</li>
+								<li>Influences only the specified turn (volatile)</li>
+								<li>Does not affect persona</li>
 							</ul>
 						</div>
 
 						<form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-8">
 							<div className="mb-4">
-								<div className="block text-sm font-semibold text-gray-700 mb-2">Input Type</div>
-								<div className="flex gap-4">
-									<label className="flex items-center">
-										<input
-											type="radio"
-											name="inputType"
-											value="direction"
-											checked={inputType === "direction"}
-											onChange={(e) => setInputType(e.target.value as "direction" | "feedback")}
-											disabled={createInputMutation.isPending}
-											className="mr-2"
-										/>
-										<span>Direction</span>
-									</label>
-									<label className="flex items-center">
-										<input
-											type="radio"
-											name="inputType"
-											value="feedback"
-											checked={inputType === "feedback"}
-											onChange={(e) => setInputType(e.target.value as "direction" | "feedback")}
-											disabled={createInputMutation.isPending}
-											className="mr-2"
-										/>
-										<span>Feedback</span>
-									</label>
-								</div>
+								<label
+									htmlFor="sessionId"
+									className="block text-sm font-semibold text-gray-700 mb-2"
+								>
+									Session ID
+								</label>
+								<input
+									type="text"
+									id="sessionId"
+									value={sessionId}
+									onChange={(e) => setSessionId(e.target.value)}
+									className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+									placeholder="Enter active session ID..."
+									disabled={createMutation.isPending}
+									required
+								/>
+								{session && (
+									<p className="mt-1 text-xs text-gray-500">
+										Status: {session.status} | Turn: {session.current_turn}/{session.max_turns}
+									</p>
+								)}
+							</div>
+
+							<div className="mb-4">
+								<label
+									htmlFor="turnNumber"
+									className="block text-sm font-semibold text-gray-700 mb-2"
+								>
+									Turn Number
+								</label>
+								<input
+									type="number"
+									id="turnNumber"
+									value={turnNumber}
+									onChange={(e) => setTurnNumber(Number(e.target.value))}
+									min={1}
+									max={session?.max_turns ?? 10}
+									className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+									disabled={createMutation.isPending}
+									required
+								/>
 							</div>
 
 							<div className="mb-4">
 								<label htmlFor="content" className="block text-sm font-semibold text-gray-700 mb-2">
-									{inputType === "direction" ? "Direction" : "Feedback"}
+									Direction Content
 								</label>
-								<textarea
+								<input
+									type="text"
 									id="content"
 									value={content}
 									onChange={(e) => setContent(e.target.value)}
-									className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
-									placeholder={
-										inputType === "direction"
-											? "e.g., Focus more on sustainability and environmental concerns..."
-											: "e.g., Your recent arguments were too aggressive. Try to be more collaborative..."
-									}
-									maxLength={1000}
-									disabled={createInputMutation.isPending}
+									className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+									placeholder="e.g., Focus on economic impact..."
+									maxLength={80}
+									disabled={createMutation.isPending}
 									required
 								/>
-								<p className="mt-1 text-xs text-gray-500">{content.length}/1000 characters</p>
+								<p className="mt-1 text-xs text-gray-500">{content.length}/80 characters</p>
 							</div>
 
 							<button
 								type="submit"
-								disabled={createInputMutation.isPending || !content.trim()}
+								disabled={createMutation.isPending || !content.trim() || !sessionId}
 								className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 transition"
 							>
-								{createInputMutation.isPending
-									? "Adding..."
-									: `Add ${inputType === "direction" ? "Direction" : "Feedback"}`}
+								{createMutation.isPending ? "Adding..." : "Add Direction"}
 							</button>
 						</form>
 
 						<h2 className="text-2xl font-bold mb-4">History</h2>
 
-						{inputs.length === 0 ? (
+						{directions.length === 0 ? (
 							<div className="text-center py-12 bg-gray-50 rounded-lg">
-								<p className="text-gray-600">No direction or feedback yet.</p>
+								<p className="text-gray-600">No directions yet.</p>
 							</div>
 						) : (
 							<div className="space-y-4">
-								{inputs.map((input) => (
-									<div key={input.id} className="bg-white rounded-lg shadow p-6">
+								{directions.map((d) => (
+									<div key={d.id} className="bg-white rounded-lg shadow p-6">
 										<div className="flex justify-between items-start mb-3">
 											<div className="flex items-center gap-2">
-												<span
-													className={`px-2 py-1 rounded text-xs font-semibold ${
-														input.input_type === "direction"
-															? "bg-purple-100 text-purple-700"
-															: "bg-orange-100 text-orange-700"
-													}`}
-												>
-													{input.input_type === "direction" ? "Direction" : "Feedback"}
+												<span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
+													Turn {d.turn_number}
 												</span>
-												{input.applied_at && (
-													<span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-														Applied
-													</span>
-												)}
-												{!input.applied_at && (
-													<span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-														Pending
-													</span>
-												)}
 											</div>
 										</div>
-										<p className="text-gray-700 whitespace-pre-wrap">{input.content}</p>
-										<div className="mt-3 text-xs text-gray-500">
-											<p>Added: {formatDateTime(input.created_at)}</p>
-											{input.applied_at && <p>Applied: {formatDateTime(input.applied_at)}</p>}
-										</div>
+										<p className="text-gray-700">{d.content}</p>
+										<p className="mt-3 text-xs text-gray-500">
+											Added: {formatDateTime(d.created_at)}
+										</p>
 									</div>
 								))}
 							</div>

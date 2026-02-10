@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { KNOWLEDGE_ENTRIES_LIMIT } from "../config/constants";
+import { KNOWLEDGE_SLOTS_LIMIT } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema, SuccessResponseSchema } from "../schemas/common";
 import {
@@ -13,7 +13,7 @@ import {
 } from "../schemas/knowledge";
 import type { Bindings } from "../types/bindings";
 import type { Agent, KnowledgeEntry } from "../types/database";
-import { forbidden, handleDatabaseError, notFound } from "../utils/errors";
+import { forbidden, handleDatabaseError, notFound, sendError } from "../utils/errors";
 import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -124,6 +124,17 @@ knowledge.openapi(createKnowledgeRoute, async (c) => {
 
 		if (agent.user_id !== userId) {
 			return forbidden(c, "You do not have access to this agent");
+		}
+
+		// Check slot limit
+		const count = await c.env.DB.prepare(
+			"SELECT COUNT(*) as count FROM knowledge_entries WHERE agent_id = ?",
+		)
+			.bind(agentId)
+			.first<{ count: number }>();
+
+		if (count && count.count >= KNOWLEDGE_SLOTS_LIMIT) {
+			return sendError(c, 409, `Knowledge slots full (max ${KNOWLEDGE_SLOTS_LIMIT})`, "SLOTS_FULL");
 		}
 
 		// Create knowledge entry
@@ -248,7 +259,7 @@ knowledge.openapi(listKnowledgeRoute, async (c) => {
        ORDER BY created_at DESC
        LIMIT ?`,
 		)
-			.bind(agentId, KNOWLEDGE_ENTRIES_LIMIT)
+			.bind(agentId, KNOWLEDGE_SLOTS_LIMIT)
 			.all<KnowledgeEntry>();
 
 		return c.json({

@@ -110,20 +110,25 @@ export default function AgentKnowledge() {
 						</div>
 
 						<div className="flex justify-between items-center mb-6">
-							<h1 className="text-3xl font-bold">Knowledge Base</h1>
-							<button
-								type="button"
-								onClick={() => setShowForm(!showForm)}
-								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-							>
-								{showForm ? "Cancel" : "Add Knowledge"}
-							</button>
+							<div>
+								<h1 className="text-3xl font-bold">Knowledge Base</h1>
+								<p className="text-sm text-gray-600 mt-1">{knowledge.length} / 10 slots used</p>
+							</div>
+							{knowledge.length < 10 && (
+								<button
+									type="button"
+									onClick={() => setShowForm(!showForm)}
+									className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+								>
+									{showForm ? "Cancel" : "Add Knowledge"}
+								</button>
+							)}
 						</div>
 
 						<div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
 							<p className="text-blue-800 text-sm">
-								Add knowledge entries to help your agent make informed decisions in deliberations.
-								The agent will use this knowledge when forming opinions.
+								Add knowledge entries to help your agent make informed decisions. Max 10 slots.
+								Title: 30 chars, Content: 500 chars.
 							</p>
 						</div>
 
@@ -140,7 +145,7 @@ export default function AgentKnowledge() {
 										onChange={(e) => setTitle(e.target.value)}
 										className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
 										placeholder="e.g., Climate Change Facts, Economic Policy Basics"
-										maxLength={200}
+										maxLength={30}
 										disabled={createKnowledgeMutation.isPending}
 										required
 									/>
@@ -159,11 +164,11 @@ export default function AgentKnowledge() {
 										onChange={(e) => setContent(e.target.value)}
 										className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 h-32"
 										placeholder="Enter detailed knowledge content..."
-										maxLength={2000}
+										maxLength={500}
 										disabled={createKnowledgeMutation.isPending}
 										required
 									/>
-									<p className="mt-1 text-xs text-gray-500">{content.length}/2000 characters</p>
+									<p className="mt-1 text-xs text-gray-500">{content.length}/500 characters</p>
 								</div>
 
 								<div className="flex gap-4">

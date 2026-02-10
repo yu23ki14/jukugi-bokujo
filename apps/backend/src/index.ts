@@ -80,8 +80,12 @@ app.doc("/api/openapi.json", {
 			description: "Knowledge base management for agents",
 		},
 		{
-			name: "User Inputs",
-			description: "User directions and feedback for agents",
+			name: "Directions",
+			description: "Real-time tactical directions during sessions",
+		},
+		{
+			name: "Feedbacks",
+			description: "Post-session feedback, reflection, and strategies",
 		},
 		{
 			name: "Sessions",
@@ -140,9 +144,9 @@ app.get("/api/test-db/state", async (c) => {
 			"SELECT id, name, created_at, updated_at FROM agents ORDER BY created_at DESC",
 		).all();
 
-		// Get user inputs count per agent
-		const userInputsCount = await c.env.DB.prepare(
-			"SELECT agent_id, COUNT(*) as count, MAX(created_at) as last_input FROM user_inputs GROUP BY agent_id",
+		// Get feedbacks count per agent
+		const feedbacksCount = await c.env.DB.prepare(
+			"SELECT agent_id, COUNT(*) as count, MAX(created_at) as last_feedback FROM feedbacks GROUP BY agent_id",
 		).all();
 
 		// Calculate current timestamp and 3-day threshold
@@ -156,7 +160,7 @@ app.get("/api/test-db/state", async (c) => {
 			participants: participants?.count || 0,
 			recent_sessions: recentSessions.results,
 			agent_details: allAgents.results,
-			user_inputs: userInputsCount.results,
+			feedbacks: feedbacksCount.results,
 			timestamp_info: {
 				current_timestamp: now,
 				three_days_ago_threshold: threeDaysAgo,
@@ -188,14 +192,16 @@ app.get("/api/test-db/agent-selection", async (c) => {
 		const result = await c.env.DB.prepare(
 			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
        FROM agents a
-       LEFT JOIN user_inputs ui ON a.id = ui.agent_id
-       WHERE ui.created_at >= ?
+       LEFT JOIN feedbacks f ON a.id = f.agent_id
+       LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
+       WHERE f.created_at >= ?
+          OR ke.created_at >= ?
           OR a.created_at >= ?
        GROUP BY a.id
        ORDER BY RANDOM()
        LIMIT ?`,
 		)
-			.bind(thresholdTimestamp, thresholdTimestamp, SESSION_PARTICIPANT_COUNT)
+			.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp, SESSION_PARTICIPANT_COUNT)
 			.all();
 
 		// Also test a simpler query
@@ -367,16 +373,18 @@ app.post("/api/test-queue/send", async (c) => {
 // ============================================================================
 
 import { agentsRouter } from "./routes/agents";
+import { directionsRouter } from "./routes/directions";
+import { feedbacksRouter } from "./routes/feedbacks";
 import { knowledgeRouter } from "./routes/knowledge";
 import { sessionsRouter } from "./routes/sessions";
 import { adminTopicsRouter, publicTopicsRouter } from "./routes/topics";
-import { userInputsRouter } from "./routes/user-inputs";
 
 app.route("/api", publicTopicsRouter); // Public topics (no auth) - mount first
 app.route("/api", adminTopicsRouter); // Admin topics (with auth)
 app.route("/api/agents", agentsRouter);
 app.route("/api", knowledgeRouter); // Mounts /agents/:agentId/knowledge and /knowledge/:id
-app.route("/api", userInputsRouter); // Mounts /agents/:agentId/inputs
+app.route("/api", directionsRouter); // Mounts /agents/:agentId/directions
+app.route("/api", feedbacksRouter); // Mounts /agents/:agentId/feedbacks and /agents/:agentId/strategies
 app.route("/api/sessions", sessionsRouter);
 
 // ============================================================================

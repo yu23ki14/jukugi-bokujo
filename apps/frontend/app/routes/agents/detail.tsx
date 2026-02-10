@@ -113,13 +113,13 @@ export default function AgentDetail() {
 							</button>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+						<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 							<Link
 								to={`/agents/${id}/knowledge`}
 								className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition text-center"
 							>
 								<h3 className="font-semibold text-lg mb-1">Knowledge</h3>
-								<p className="text-sm text-gray-600">Manage agent's knowledge base</p>
+								<p className="text-sm text-gray-600">Manage knowledge (10 slots)</p>
 							</Link>
 
 							<Link
@@ -127,7 +127,15 @@ export default function AgentDetail() {
 								className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition text-center"
 							>
 								<h3 className="font-semibold text-lg mb-1">Direction</h3>
-								<p className="text-sm text-gray-600">Set agent's direction and goals</p>
+								<p className="text-sm text-gray-600">Real-time turn instructions</p>
+							</Link>
+
+							<Link
+								to={`/agents/${id}/feedback`}
+								className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition text-center"
+							>
+								<h3 className="font-semibold text-lg mb-1">Feedback</h3>
+								<p className="text-sm text-gray-600">Post-session reflection</p>
 							</Link>
 
 							<Link

@@ -3,10 +3,17 @@
  * Processes agent statements in parallel with rate limit control
  */
 
-import { LLM_MODEL, LLM_TOKEN_LIMITS } from "../config/constants";
+import { KNOWLEDGE_SLOTS_LIMIT, LLM_MODEL, LLM_TOKEN_LIMITS } from "../config/constants";
 import { callAnthropicAPI, isRateLimitError } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent, KnowledgeEntry, Session, Statement, UserInput } from "../types/database";
+import type {
+	Agent,
+	Direction,
+	KnowledgeEntry,
+	Session,
+	SessionStrategy,
+	Statement,
+} from "../types/database";
 import type { TurnProcessingResult, TurnQueueMessage } from "../types/queue";
 import { parseAgentPersona } from "../utils/database";
 import { getCurrentTimestamp } from "../utils/timestamp";
@@ -24,16 +31,16 @@ export async function processAgentStatement(
 	);
 
 	try {
-		// 1-5. Fetch all data in parallel for better performance
-		const [agent, session, knowledge, userInputs, previousStatements] = await Promise.all([
+		// Fetch all data in parallel
+		const [agent, session, knowledge, direction, strategy, previousStatements] = await Promise.all([
 			getAgent(env.DB, message.agentId),
 			getSession(env.DB, message.sessionId),
 			getAgentKnowledge(env.DB, message.agentId),
-			getRecentUserInputs(env.DB, message.agentId),
+			getDirectionForTurn(env.DB, message.agentId, message.sessionId, message.turnNumber),
+			getSessionStrategy(env.DB, message.agentId, message.sessionId),
 			getPreviousStatements(env.DB, message.sessionId),
 		]);
 
-		// Validation
 		if (!agent) {
 			throw new Error(`Agent ${message.agentId} not found`);
 		}
@@ -42,18 +49,19 @@ export async function processAgentStatement(
 			throw new Error(`Session ${message.sessionId} not found`);
 		}
 
-		// 6. Generate statement using LLM
+		// Generate statement using LLM
 		const statement = await generateStatement(
 			env,
 			agent,
 			knowledge,
-			userInputs,
+			direction,
+			strategy,
 			session,
 			previousStatements,
 			message.turnNumber,
 		);
 
-		// 7. Save statement
+		// Save statement
 		const statementId = generateUUID();
 		await env.DB.prepare(
 			`INSERT INTO statements (id, turn_id, agent_id, content, thinking_process, created_at)
@@ -88,26 +96,18 @@ export async function processAgentStatement(
 	}
 }
 
-/**
- * Get agent
- */
 async function getAgent(db: D1Database, agentId: string): Promise<Agent | null> {
-	const result = await db
+	return await db
 		.prepare("SELECT id, user_id, name, persona, created_at, updated_at FROM agents WHERE id = ?")
 		.bind(agentId)
 		.first<Agent>();
-
-	return result;
 }
 
-/**
- * Get session
- */
 async function getSession(
 	db: D1Database,
 	sessionId: string,
 ): Promise<(Session & { topic_title: string; topic_description: string }) | null> {
-	const result = await db
+	return await db
 		.prepare(
 			`SELECT s.*, t.title as topic_title, t.description as topic_description
        FROM sessions s
@@ -116,13 +116,8 @@ async function getSession(
 		)
 		.bind(sessionId)
 		.first<Session & { topic_title: string; topic_description: string }>();
-
-	return result;
 }
 
-/**
- * Get agent knowledge
- */
 async function getAgentKnowledge(db: D1Database, agentId: string): Promise<KnowledgeEntry[]> {
 	const result = await db
 		.prepare(
@@ -130,35 +125,47 @@ async function getAgentKnowledge(db: D1Database, agentId: string): Promise<Knowl
        FROM knowledge_entries
        WHERE agent_id = ?
        ORDER BY created_at DESC
-       LIMIT 50`,
+       LIMIT ?`,
 		)
-		.bind(agentId)
+		.bind(agentId, KNOWLEDGE_SLOTS_LIMIT)
 		.all<KnowledgeEntry>();
 
 	return result.results;
 }
 
-/**
- * Get recent user inputs
- */
-async function getRecentUserInputs(db: D1Database, agentId: string): Promise<UserInput[]> {
-	const result = await db
+async function getDirectionForTurn(
+	db: D1Database,
+	agentId: string,
+	sessionId: string,
+	turnNumber: number,
+): Promise<Direction | null> {
+	return await db
 		.prepare(
-			`SELECT id, input_type, content, created_at
-       FROM user_inputs
-       WHERE agent_id = ?
-       ORDER BY created_at DESC
-       LIMIT 30`,
+			`SELECT id, agent_id, session_id, turn_number, content, created_at
+       FROM directions
+       WHERE agent_id = ? AND session_id = ? AND turn_number = ?
+       LIMIT 1`,
 		)
-		.bind(agentId)
-		.all<UserInput>();
-
-	return result.results;
+		.bind(agentId, sessionId, turnNumber)
+		.first<Direction>();
 }
 
-/**
- * Get previous statements for a session
- */
+async function getSessionStrategy(
+	db: D1Database,
+	agentId: string,
+	sessionId: string,
+): Promise<SessionStrategy | null> {
+	return await db
+		.prepare(
+			`SELECT id, agent_id, session_id, feedback_id, strategy, created_at
+       FROM session_strategies
+       WHERE agent_id = ? AND session_id = ?
+       LIMIT 1`,
+		)
+		.bind(agentId, sessionId)
+		.first<SessionStrategy>();
+}
+
 async function getPreviousStatements(
 	db: D1Database,
 	sessionId: string,
@@ -180,37 +187,46 @@ async function getPreviousStatements(
 	return result.results;
 }
 
-/**
- * Generate statement for an agent using LLM
- */
 async function generateStatement(
 	env: Bindings,
 	agent: Agent,
 	knowledge: KnowledgeEntry[],
-	userInputs: UserInput[],
+	direction: Direction | null,
+	strategy: SessionStrategy | null,
 	session: Session & { topic_title: string; topic_description: string },
 	previousStatements: Array<Statement & { agent_name: string; turn_number: number }>,
 	currentTurn: number,
 ): Promise<{ content: string; thinking_process: string }> {
 	const agentWithPersona = parseAgentPersona(agent);
 
+	const knowledgeSection =
+		knowledge.map((k) => `- ${k.title}: ${k.content}`).join("\n") || "（特に知識はありません）";
+
+	const strategySection = strategy ? `\n## 今回の熟議方針\n${strategy.strategy}\n` : "";
+
+	const directionSection = direction
+		? `\n## ユーザーからの指示（このターンのみ）\n${direction.content}\n`
+		: "";
+
+	const rules = [
+		"1. 他者の意見を尊重し、建設的に議論する",
+		"2. 自分の考えを明確に述べる",
+		"3. 根拠を示す",
+		"4. 150-300文字程度で簡潔に発言する",
+	];
+	if (strategy) rules.push("5. 今回の熟議方針を意識して発言する");
+	if (direction) rules.push(`${rules.length + 1}. ユーザーの指示を今回の発言に反映する`);
+
 	const systemPrompt = `あなたは「${agentWithPersona.name}」という名前の熟議エージェントです。
 
 ## あなたの人格
 ${JSON.stringify(agentWithPersona.persona, null, 2)}
-
+${strategySection}
 ## あなたの知識
-${knowledge.map((k) => `- ${k.title}: ${k.content}`).join("\n") || "（特に知識はありません）"}
-
-## ユーザーからの方針・フィードバック
-${userInputs.map((i) => `[${i.input_type}] ${i.content}`).join("\n") || "（特に指示はありません）"}
-
+${knowledgeSection}
+${directionSection}
 ## 熟議のルール
-1. 他者の意見を尊重し、建設的に議論する
-2. 自分の考えを明確に述べる
-3. 根拠を示す
-4. 150-300文字程度で簡潔に発言する
-5. ユーザーの方針を徐々に反映させる
+${rules.join("\n")}
 
 あなたの発言は他の参加者と共に読まれ、ユーザーに観察されます。`;
 
@@ -265,7 +281,6 @@ ${formatPreviousStatements(previousStatements)}
 			messages: [{ role: "user", content: userPrompt }],
 		});
 
-		// Parse thinking and content
 		const thinkingMatch = response.content.match(/<thinking>([\s\S]*?)<\/thinking>/);
 		const thinking_process = thinkingMatch ? thinkingMatch[1].trim() : "";
 		const content = response.content.replace(/<thinking>[\s\S]*?<\/thinking>/, "").trim();
@@ -273,7 +288,6 @@ ${formatPreviousStatements(previousStatements)}
 		return { content, thinking_process };
 	} catch (error) {
 		console.error("Failed to generate statement:", error);
-		// Re-throw for queue retry handling
 		throw error;
 	}
 }

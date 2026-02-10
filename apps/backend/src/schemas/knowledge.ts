@@ -9,13 +9,13 @@ import { z } from "@hono/zod-openapi";
  */
 export const CreateKnowledgeRequestSchema = z
 	.object({
-		title: z.string().min(1).max(200).openapi({
-			description: "Knowledge entry title",
-			example: "Environmental Policy Priorities",
+		title: z.string().min(1).max(30).openapi({
+			description: "Knowledge entry title (max 30 characters)",
+			example: "再生可能エネルギーの現状",
 		}),
-		content: z.string().min(1).max(10000).openapi({
-			description: "Knowledge entry content",
-			example: "Focus on renewable energy and carbon reduction...",
+		content: z.string().min(1).max(500).openapi({
+			description: "Knowledge entry content (max 500 characters)",
+			example: "日本の再エネ比率は約20%で...",
 		}),
 	})
 	.openapi("CreateKnowledgeRequest");

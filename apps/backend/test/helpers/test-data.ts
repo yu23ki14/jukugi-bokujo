@@ -70,20 +70,22 @@ export const TEST_KNOWLEDGE = [
 ];
 
 /**
- * Test user input content
+ * Test direction content
  */
-export const TEST_USER_INPUTS = {
-	direction: [
-		"もっと環境問題に関心を持ってください",
-		"議論では相手の意見を尊重してください",
-		"データに基づいた意見を述べてください",
-	],
-	feedback: [
-		"前回の発言は良かったです",
-		"もう少し具体的な提案をお願いします",
-		"他の参加者との協調性が素晴らしいです",
-	],
-};
+export const TEST_DIRECTIONS = [
+	"経済的な観点も考慮して",
+	"相手の意見に反論して",
+	"具体的なデータを示して",
+];
+
+/**
+ * Test feedback content
+ */
+export const TEST_FEEDBACKS = [
+	"前回の議論では良い論点を出していましたが、もう少し具体的な提案があるとより説得力が増します。次回は具体例を交えて議論してください。",
+	"他の参加者の意見を尊重しつつも、自分の立場をもっと明確にしてほしい。",
+	"素晴らしい議論でした。この調子で環境問題についても深く考察してください。",
+];
 
 /**
  * Test topic data
@@ -123,11 +125,22 @@ export function createKnowledgeRequestBody(title: string, content: string) {
 }
 
 /**
- * Create test request body for user input creation
+ * Create test request body for direction creation
  */
-export function createUserInputRequestBody(inputType: "direction" | "feedback", content: string) {
+export function createDirectionRequestBody(sessionId: string, turnNumber: number, content: string) {
 	return {
-		input_type: inputType,
+		session_id: sessionId,
+		turn_number: turnNumber,
+		content: content.trim(),
+	};
+}
+
+/**
+ * Create test request body for feedback creation
+ */
+export function createFeedbackRequestBody(sessionId: string, content: string) {
+	return {
+		session_id: sessionId,
 		content: content.trim(),
 	};
 }
