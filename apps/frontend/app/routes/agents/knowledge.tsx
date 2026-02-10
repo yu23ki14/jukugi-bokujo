@@ -112,6 +112,7 @@ export default function AgentKnowledge() {
 						<div className="flex justify-between items-center mb-6">
 							<h1 className="text-3xl font-bold">Knowledge Base</h1>
 							<button
+								type="button"
 								onClick={() => setShowForm(!showForm)}
 								className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
 							>
@@ -193,6 +194,7 @@ export default function AgentKnowledge() {
 							<div className="text-center py-12 bg-gray-50 rounded-lg">
 								<p className="text-gray-600 mb-4">No knowledge entries yet.</p>
 								<button
+									type="button"
 									onClick={() => setShowForm(true)}
 									className="inline-block bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 transition"
 								>
@@ -206,6 +208,7 @@ export default function AgentKnowledge() {
 										<div className="flex justify-between items-start mb-3">
 											<h3 className="font-semibold text-lg">{entry.title}</h3>
 											<button
+												type="button"
 												onClick={() => handleDelete(entry.id)}
 												className="text-red-600 hover:text-red-800 text-sm"
 											>

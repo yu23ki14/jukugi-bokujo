@@ -2,11 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import {
-	getGetApiAgentsQueryKey,
-	type ListAgentsResponse,
-	usePostApiAgents,
-} from "../../hooks/backend";
+import { getGetApiAgentsQueryKey, usePostApiAgents } from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Create Agent - Jukugi Bokujo" }];
@@ -28,6 +24,7 @@ export default function NewAgent() {
 				const previousAgents = queryClient.getQueryData(getGetApiAgentsQueryKey());
 
 				// Optimistically update to the new value
+				// biome-ignore lint/suspicious/noExplicitAny: queryClient.setQueryData requires generic type inference for complex API response structure
 				queryClient.setQueryData(getGetApiAgentsQueryKey(), (old: any) => {
 					if (!old || old.status !== 200) return old;
 
@@ -56,7 +53,7 @@ export default function NewAgent() {
 
 				return { previousAgents };
 			},
-			onError: (err, variables, context) => {
+			onError: (_err, _variables, context) => {
 				// Rollback on error
 				if (context?.previousAgents) {
 					queryClient.setQueryData(getGetApiAgentsQueryKey(), context.previousAgents);

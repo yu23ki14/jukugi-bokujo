@@ -109,7 +109,7 @@ export default function AgentDirection() {
 
 						<form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 mb-8">
 							<div className="mb-4">
-								<label className="block text-sm font-semibold text-gray-700 mb-2">Input Type</label>
+								<div className="block text-sm font-semibold text-gray-700 mb-2">Input Type</div>
 								<div className="flex gap-4">
 									<label className="flex items-center">
 										<input

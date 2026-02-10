@@ -188,7 +188,10 @@ export default function SessionDetailPage() {
 												<h3 className="font-semibold text-gray-700 mb-2">Highlights</h3>
 												<ul className="list-disc list-inside space-y-1">
 													{session.judge_verdict.highlights.map((highlight, idx) => (
-														<li key={idx} className="text-gray-600">
+														<li
+															key={`highlight-${idx}-${highlight.substring(0, 50)}`}
+															className="text-gray-600"
+														>
 															{highlight}
 														</li>
 													))}

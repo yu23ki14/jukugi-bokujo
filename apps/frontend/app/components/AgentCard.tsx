@@ -62,7 +62,11 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
 	);
 
 	if (onClick) {
-		return <div onClick={onClick}>{cardContent}</div>;
+		return (
+			<button type="button" onClick={onClick} className="w-full text-left">
+				{cardContent}
+			</button>
+		);
 	}
 
 	return <Link to={`/agents/${agent.id}`}>{cardContent}</Link>;

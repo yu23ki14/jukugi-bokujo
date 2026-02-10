@@ -63,6 +63,7 @@ export default function SessionsIndex() {
 				{/* Filters */}
 				<div className="mb-6 flex gap-2 flex-wrap">
 					<button
+						type="button"
 						onClick={() => handleStatusChange("all")}
 						className={`px-4 py-2 rounded transition ${
 							status === "all"
@@ -73,6 +74,7 @@ export default function SessionsIndex() {
 						All
 					</button>
 					<button
+						type="button"
 						onClick={() => handleStatusChange("active")}
 						className={`px-4 py-2 rounded transition ${
 							status === "active"
@@ -83,6 +85,7 @@ export default function SessionsIndex() {
 						Active
 					</button>
 					<button
+						type="button"
 						onClick={() => handleStatusChange("completed")}
 						className={`px-4 py-2 rounded transition ${
 							status === "completed"
@@ -93,6 +96,7 @@ export default function SessionsIndex() {
 						Completed
 					</button>
 					<button
+						type="button"
 						onClick={() => handleStatusChange("pending")}
 						className={`px-4 py-2 rounded transition ${
 							status === "pending"
@@ -124,6 +128,7 @@ export default function SessionsIndex() {
 						<p className="text-gray-600">No sessions found.</p>
 						{status !== "all" && (
 							<button
+								type="button"
 								onClick={() => handleStatusChange("all")}
 								className="mt-4 text-blue-600 hover:text-blue-800"
 							>
@@ -179,6 +184,7 @@ export default function SessionsIndex() {
 						{total > limit && (
 							<div className="flex justify-center gap-4 items-center">
 								<button
+									type="button"
 									onClick={() => handlePagination(Math.max(0, offset - limit))}
 									disabled={offset === 0}
 									className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
@@ -189,6 +195,7 @@ export default function SessionsIndex() {
 									{offset + 1} - {Math.min(offset + limit, total)} of {total}
 								</span>
 								<button
+									type="button"
 									onClick={() => handlePagination(offset + limit)}
 									disabled={offset + limit >= total}
 									className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition"

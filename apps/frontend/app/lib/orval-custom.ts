@@ -68,7 +68,7 @@ export const customBackendClient = <T>(
 	const axiosOptions: AxiosRequestConfig = { ...options };
 	if (options?.body) {
 		axiosOptions.data = options.body;
-		delete axiosOptions.body;
+		delete (axiosOptions as AxiosRequestConfig & { body?: string }).body;
 	}
 
 	const promise = axiosInstance

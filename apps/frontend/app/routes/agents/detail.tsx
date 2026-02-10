@@ -28,6 +28,7 @@ export default function AgentDetail() {
 				const previousAgents = queryClient.getQueryData(getGetApiAgentsQueryKey());
 
 				// Optimistically remove the agent from the list
+				// biome-ignore lint/suspicious/noExplicitAny: queryClient.setQueryData requires generic type inference for complex API response structure
 				queryClient.setQueryData(getGetApiAgentsQueryKey(), (old: any) => {
 					if (!old || old.status !== 200) return old;
 
@@ -35,6 +36,7 @@ export default function AgentDetail() {
 						...old,
 						data: {
 							...old.data,
+							// biome-ignore lint/suspicious/noExplicitAny: array filter requires type inference from API response structure
 							agents: (old.data.agents || []).filter((agent: any) => agent.id !== variables.id),
 						},
 					};
@@ -42,7 +44,7 @@ export default function AgentDetail() {
 
 				return { previousAgents };
 			},
-			onError: (err, variables, context) => {
+			onError: (_err, _variables, context) => {
 				// Rollback on error
 				if (context?.previousAgents) {
 					queryClient.setQueryData(getGetApiAgentsQueryKey(), context.previousAgents);

@@ -40,3 +40,7 @@ coverage/
 # Misc
 .cache/
 .temp/
+
+# Auto-generated files
+apps/backend/worker-configuration.d.ts
+apps/frontend/app/hooks/backend/
