@@ -3,6 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { MAX_AGENTS_PER_USER } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import {
 	CreateAgentRequestSchema,
@@ -17,7 +18,7 @@ import { generateInitialPersona } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
 import type { Agent } from "../types/database";
 import { getOrCreateUser, parseAgentPersona, stringifyAgentPersona } from "../utils/database";
-import { forbidden, handleDatabaseError, notFound } from "../utils/errors";
+import { conflict, forbidden, handleDatabaseError, notFound } from "../utils/errors";
 import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -71,6 +72,14 @@ const createAgentRoute = createRoute({
 				},
 			},
 		},
+		409: {
+			description: "Agent limit reached",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
 		500: {
 			description: "Internal server error",
 			content: {
@@ -91,6 +100,17 @@ agents.openapi(createAgentRoute, async (c) => {
 	try {
 		// Ensure user exists in database
 		await getOrCreateUser(c.env.DB, userId);
+
+		// Check agent limit
+		const countResult = await c.env.DB.prepare(
+			"SELECT COUNT(*) as count FROM agents WHERE user_id = ?",
+		)
+			.bind(userId)
+			.first<{ count: number }>();
+
+		if (countResult && countResult.count >= MAX_AGENTS_PER_USER) {
+			return conflict(c, `エージェントは最大${MAX_AGENTS_PER_USER}体までです`);
+		}
 
 		// Generate initial persona using LLM
 		const persona = await generateInitialPersona(c.env, body.name.trim());

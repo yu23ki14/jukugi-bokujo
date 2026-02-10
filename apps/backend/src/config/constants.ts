@@ -24,6 +24,11 @@ export const CRON_SCHEDULE_TURN = "*/15 * * * *";
 // ============================================================================
 
 /**
+ * Maximum number of agents a user can own
+ */
+export const MAX_AGENTS_PER_USER = 3;
+
+/**
  * Number of agents participating in each session
  * Fixed to 4 for balanced discussions
  */

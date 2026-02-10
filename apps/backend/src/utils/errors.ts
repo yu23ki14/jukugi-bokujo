@@ -58,3 +58,11 @@ export function unauthorized(c: Context, message = "Unauthorized"): any {
 export function forbidden(c: Context, message = "Forbidden"): any {
 	return sendError(c, 403, message, "FORBIDDEN");
 }
+
+/**
+ * Handle conflict errors
+ */
+// biome-ignore lint/suspicious/noExplicitAny: Required for OpenAPI Hono type compatibility
+export function conflict(c: Context, message: string): any {
+	return sendError(c, 409, message, "CONFLICT");
+}
