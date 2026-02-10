@@ -96,6 +96,7 @@ export interface SessionParticipant {
 	session_id: string;
 	agent_id: string;
 	joined_at: number;
+	speaking_order: number;
 }
 
 export interface SessionParticipantWithAgent extends SessionParticipant {

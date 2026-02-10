@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { type SessionSummary, useGetApiSessions, useGetApiTopicsId } from "../../hooks/backend";
+import { formatDate } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Topic Detail - Jukugi Bokujo" }];
@@ -86,9 +87,7 @@ export default function TopicDetail() {
 						<p className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
 							{topic.description}
 						</p>
-						<p className="text-xs text-gray-500">
-							Created: {new Date(topic.created_at).toLocaleDateString("ja-JP")}
-						</p>
+						<p className="text-xs text-gray-500">Created: {formatDate(topic.created_at)}</p>
 					</div>
 
 					<h2 className="text-2xl font-bold mb-4">Related Sessions ({sessions.length})</h2>
@@ -124,15 +123,9 @@ export default function TopicDetail() {
 									</div>
 
 									<div className="text-xs text-gray-500 flex gap-4">
-										{session.started_at && (
-											<span>
-												Started: {new Date(session.started_at).toLocaleDateString("ja-JP")}
-											</span>
-										)}
+										{session.started_at && <span>Started: {formatDate(session.started_at)}</span>}
 										{session.completed_at && (
-											<span>
-												Completed: {new Date(session.completed_at).toLocaleDateString("ja-JP")}
-											</span>
+											<span>Completed: {formatDate(session.completed_at)}</span>
 										)}
 									</div>
 								</Link>

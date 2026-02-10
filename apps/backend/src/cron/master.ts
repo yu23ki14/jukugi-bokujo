@@ -3,6 +3,11 @@
  * Creates new deliberation sessions for active topics
  */
 
+import {
+	AGENT_ACTIVITY_THRESHOLD_DAYS,
+	SESSION_MAX_TURNS,
+	SESSION_PARTICIPANT_COUNT,
+} from "../config/constants";
 import type { Bindings } from "../types/bindings";
 import type { Agent, Topic } from "../types/database";
 import { getCurrentTimestamp, getTimestampDaysAgo } from "../utils/timestamp";
@@ -64,13 +69,13 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 
 	await env.DB.prepare(
 		`INSERT INTO sessions (id, topic_id, status, max_turns, created_at, updated_at)
-     VALUES (?, ?, 'pending', 10, ?, ?)`,
+     VALUES (?, ?, 'pending', ?, ?, ?)`,
 	)
-		.bind(sessionId, topic.id, now, now)
+		.bind(sessionId, topic.id, SESSION_MAX_TURNS, now, now)
 		.run();
 
-	// 3. Select active agents randomly (4-6 agents)
-	const participantCount = Math.floor(Math.random() * 3) + 4; // 4-6
+	// 3. Select active agents (fixed count: 4 agents)
+	const participantCount = SESSION_PARTICIPANT_COUNT;
 	const agents = await selectActiveAgents(env.DB, participantCount);
 
 	if (agents.length === 0) {
@@ -84,16 +89,40 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 
 	console.log(`Selected ${agents.length} agents for session ${sessionId}`);
 
-	// 4. Add participants
-	for (const agent of agents) {
+	// 4. Add participants with speaking order
+	for (let i = 0; i < agents.length; i++) {
+		const agent = agents[i];
 		const participantId = generateUUID();
-		await env.DB.prepare(
-			`INSERT INTO session_participants (id, session_id, agent_id, joined_at)
-       VALUES (?, ?, ?, ?)`,
-		)
-			.bind(participantId, sessionId, agent.id, now)
-			.run();
+		const speakingOrder = i + 1; // 1-based order (1, 2, 3, 4)
+
+		console.log(
+			`Adding participant ${i + 1}/${agents.length}: agent=${agent.id} (${agent.name}), order=${speakingOrder}`,
+		);
+
+		try {
+			const result = await env.DB.prepare(
+				`INSERT INTO session_participants (id, session_id, agent_id, joined_at, speaking_order)
+         VALUES (?, ?, ?, ?, ?)`,
+			)
+				.bind(participantId, sessionId, agent.id, now, speakingOrder)
+				.run();
+
+			console.log(`Participant ${agent.name} added successfully. Result:`, result);
+		} catch (error) {
+			console.error(`Failed to add participant ${agent.name}:`, error);
+			throw error;
+		}
 	}
+
+	// Verify participants were added
+	const verifyResult = await env.DB.prepare(
+		"SELECT COUNT(*) as count FROM session_participants WHERE session_id = ?",
+	)
+		.bind(sessionId)
+		.first<{ count: number }>();
+	console.log(
+		`Verification: ${verifyResult?.count || 0} participants added to session ${sessionId}`,
+	);
 
 	// 5. Update session status to active
 	await env.DB.prepare(
@@ -122,24 +151,24 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 /**
  * Select active agents for deliberation
  * Criteria:
- * - User input within last 3 days, OR
- * - Agent created within last 3 days
+ * - User input within last N days, OR
+ * - Agent created within last N days
  */
 async function selectActiveAgents(db: D1Database, count: number): Promise<Agent[]> {
-	const threeDaysAgo = getTimestampDaysAgo(3);
+	const thresholdTimestamp = getTimestampDaysAgo(AGENT_ACTIVITY_THRESHOLD_DAYS);
 
 	const result = await db
 		.prepare(
 			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
        FROM agents a
        LEFT JOIN user_inputs ui ON a.id = ui.agent_id
-       WHERE ui.created_at >= ?          -- User input within last 3 days
-          OR a.created_at >= ?            -- OR agent created within last 3 days
+       WHERE ui.created_at >= ?          -- User input within threshold days
+          OR a.created_at >= ?            -- OR agent created within threshold days
        GROUP BY a.id
        ORDER BY RANDOM()
        LIMIT ?`,
 		)
-		.bind(threeDaysAgo, threeDaysAgo, count)
+		.bind(thresholdTimestamp, thresholdTimestamp, count)
 		.all<Agent>();
 
 	return result.results;

@@ -6,6 +6,7 @@ import {
 	useGetApiAgentsId,
 	usePostApiAgentsAgentIdInputs,
 } from "../../hooks/backend";
+import { formatDateTime } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Agent Direction - Jukugi Bokujo" }];
@@ -204,10 +205,8 @@ export default function AgentDirection() {
 										</div>
 										<p className="text-gray-700 whitespace-pre-wrap">{input.content}</p>
 										<div className="mt-3 text-xs text-gray-500">
-											<p>Added: {new Date(input.created_at).toLocaleString("ja-JP")}</p>
-											{input.applied_at && (
-												<p>Applied: {new Date(input.applied_at).toLocaleString("ja-JP")}</p>
-											)}
+											<p>Added: {formatDateTime(input.created_at)}</p>
+											{input.applied_at && <p>Applied: {formatDateTime(input.applied_at)}</p>}
 										</div>
 									</div>
 								))}

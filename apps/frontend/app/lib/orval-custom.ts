@@ -72,12 +72,15 @@ export const customBackendClient = <T>(
 	}
 
 	const promise = axiosInstance
-		.request<unknown, { data: T }>({
+		.request<unknown, { data: unknown; status: number; headers: unknown }>({
 			url,
 			...axiosOptions,
 			cancelToken: source.token,
 		})
-		.then(({ data }) => data);
+		.then(({ data, status, headers }) => {
+			// Return the full response structure that matches orval's generated types
+			return { data, status, headers } as T;
+		});
 
 	// @ts-expect-error - Adding cancel method to promise
 	promise.cancel = () => {

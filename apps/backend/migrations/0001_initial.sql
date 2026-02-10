@@ -70,6 +70,7 @@ CREATE TABLE session_participants (
   session_id TEXT NOT NULL,
   agent_id TEXT NOT NULL,
   joined_at INTEGER NOT NULL,
+  speaking_order INTEGER NOT NULL DEFAULT 0, -- Speaking order (1, 2, 3, 4)
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
   FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
   UNIQUE(session_id, agent_id)
@@ -77,6 +78,7 @@ CREATE TABLE session_participants (
 
 CREATE INDEX idx_session_participants_session_id ON session_participants(session_id);
 CREATE INDEX idx_session_participants_agent_id ON session_participants(agent_id);
+CREATE INDEX idx_session_participants_speaking_order ON session_participants(session_id, speaking_order);
 
 -- ============================================================================
 -- Turns Table

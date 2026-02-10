@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { type TopicSummary, useGetApiTopics } from "../../hooks/backend";
+import { formatDate } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Topics - Jukugi Bokujo" }];
@@ -65,9 +66,7 @@ export default function TopicsIndex() {
 								</span>
 							</div>
 							<p className="text-gray-600 mb-4 line-clamp-3">{topic.description}</p>
-							<p className="text-xs text-gray-500">
-								Created: {new Date(topic.created_at).toLocaleDateString("ja-JP")}
-							</p>
+							<p className="text-xs text-gray-500">Created: {formatDate(topic.created_at)}</p>
 						</Link>
 					))}
 				</div>

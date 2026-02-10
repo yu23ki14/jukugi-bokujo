@@ -3,6 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { KNOWLEDGE_ENTRIES_LIMIT } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema, SuccessResponseSchema } from "../schemas/common";
 import {
@@ -245,9 +246,9 @@ knowledge.openapi(listKnowledgeRoute, async (c) => {
        FROM knowledge_entries
        WHERE agent_id = ?
        ORDER BY created_at DESC
-       LIMIT 100`,
+       LIMIT ?`,
 		)
-			.bind(agentId)
+			.bind(agentId, KNOWLEDGE_ENTRIES_LIMIT)
 			.all<KnowledgeEntry>();
 
 		return c.json({

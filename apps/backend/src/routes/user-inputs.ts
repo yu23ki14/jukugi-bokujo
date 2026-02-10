@@ -3,6 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { USER_INPUTS_LIMIT } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
@@ -245,9 +246,9 @@ userInputs.openapi(listUserInputsRoute, async (c) => {
        FROM user_inputs
        WHERE agent_id = ?
        ORDER BY created_at DESC
-       LIMIT 100`,
+       LIMIT ?`,
 		)
-			.bind(agentId)
+			.bind(agentId, USER_INPUTS_LIMIT)
 			.all<UserInput>();
 
 		return c.json({

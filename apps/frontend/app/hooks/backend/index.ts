@@ -1,6 +1,5 @@
 // @ts-nocheck
 
-import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
 	DataTag,
 	DefinedInitialDataOptions,
@@ -15,9 +14,9 @@ import type {
 	UseQueryOptions,
 	UseQueryResult,
 } from "@tanstack/react-query";
-
-import { customBackendClient } from "../../lib/orval-custom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ErrorType } from "../../lib/orval-custom";
+import { customBackendClient } from "../../lib/orval-custom";
 /**
  * Topic status (active | archived)
  */
@@ -379,12 +378,36 @@ export interface SessionParticipant {
  * @nullable
  */
 export type JudgeVerdict = {
-	/** Summary of the deliberation */
+	/**
+	 * Quality score of the deliberation (1-10)
+	 * @minimum 1
+	 * @maximum 10
+	 */
+	quality_score: number;
+	/**
+	 * Cooperation score among participants (1-10)
+	 * @minimum 1
+	 * @maximum 10
+	 */
+	cooperation_score: number;
+	/**
+	 * Convergence score towards consensus (1-10)
+	 * @minimum 1
+	 * @maximum 10
+	 */
+	convergence_score: number;
+	/**
+	 * Novelty score of perspectives presented (1-10)
+	 * @minimum 1
+	 * @maximum 10
+	 */
+	novelty_score: number;
+	/** Summary of the deliberation evaluation */
 	summary: string;
-	/** Key points from the deliberation */
-	key_points: string[];
-	/** Points where agents still disagree */
-	remaining_disagreements: string[];
+	/** Notable statements or highlights from the deliberation */
+	highlights: string[];
+	/** Consensus reached during the deliberation (if any) */
+	consensus: string;
 } | null;
 
 export interface GetSessionResponse {

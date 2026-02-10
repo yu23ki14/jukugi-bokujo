@@ -1,6 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { useDeleteApiAgentsId, useGetApiAgentsId } from "../../hooks/backend";
+import {
+	getGetApiAgentsQueryKey,
+	useDeleteApiAgentsId,
+	useGetApiAgentsId,
+} from "../../hooks/backend";
+import { formatDateTime } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Agent Detail - Jukugi Bokujo" }];
@@ -9,12 +15,49 @@ export function meta() {
 export default function AgentDetail() {
 	const { id } = useParams();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	const { data: agentData, isLoading: loading, error } = useGetApiAgentsId(id ?? "");
-	const deleteAgentMutation = useDeleteApiAgentsId();
+	const deleteAgentMutation = useDeleteApiAgentsId({
+		mutation: {
+			onMutate: async (variables) => {
+				// Cancel any outgoing refetches
+				await queryClient.cancelQueries({ queryKey: getGetApiAgentsQueryKey() });
+
+				// Snapshot the previous value
+				const previousAgents = queryClient.getQueryData(getGetApiAgentsQueryKey());
+
+				// Optimistically remove the agent from the list
+				queryClient.setQueryData(getGetApiAgentsQueryKey(), (old: any) => {
+					if (!old || old.status !== 200) return old;
+
+					return {
+						...old,
+						data: {
+							...old.data,
+							agents: (old.data.agents || []).filter((agent: any) => agent.id !== variables.id),
+						},
+					};
+				});
+
+				return { previousAgents };
+			},
+			onError: (err, variables, context) => {
+				// Rollback on error
+				if (context?.previousAgents) {
+					queryClient.setQueryData(getGetApiAgentsQueryKey(), context.previousAgents);
+				}
+			},
+			onSettled: () => {
+				// Refetch after mutation completes
+				queryClient.invalidateQueries({ queryKey: getGetApiAgentsQueryKey() });
+			},
+		},
+	});
 
 	// Extract agent safely with type narrowing
-	const agent = !error && agentData?.data && "name" in agentData.data ? agentData.data : null;
+	const agent =
+		!error && agentData?.status === 200 && "name" in agentData.data ? agentData.data : null;
 
 	async function handleDelete() {
 		if (!id || !agent) return;
@@ -59,6 +102,7 @@ export default function AgentDetail() {
 								<p className="text-gray-600">Persona Version: {agent.persona.version}</p>
 							</div>
 							<button
+								type="button"
 								onClick={handleDelete}
 								disabled={deleteAgentMutation.isPending}
 								className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-400 transition"
@@ -138,8 +182,8 @@ export default function AgentDetail() {
 						</div>
 
 						<div className="mt-6 text-sm text-gray-500 flex justify-between">
-							<span>Created: {new Date(agent.created_at).toLocaleString("ja-JP")}</span>
-							<span>Updated: {new Date(agent.updated_at).toLocaleString("ja-JP")}</span>
+							<span>Created: {formatDateTime(agent.created_at)}</span>
+							<span>Updated: {formatDateTime(agent.updated_at)}</span>
 						</div>
 					</div>
 				)}

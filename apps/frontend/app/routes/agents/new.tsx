@@ -1,7 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { usePostApiAgents } from "../../hooks/backend";
+import {
+	getGetApiAgentsQueryKey,
+	type ListAgentsResponse,
+	usePostApiAgents,
+} from "../../hooks/backend";
 
 export function meta() {
 	return [{ title: "Create Agent - Jukugi Bokujo" }];
@@ -9,10 +14,60 @@ export function meta() {
 
 export default function NewAgent() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [error, setError] = useState<string | null>(null);
 
-	const createAgentMutation = usePostApiAgents();
+	const createAgentMutation = usePostApiAgents({
+		mutation: {
+			onMutate: async (variables) => {
+				// Cancel any outgoing refetches
+				await queryClient.cancelQueries({ queryKey: getGetApiAgentsQueryKey() });
+
+				// Snapshot the previous value
+				const previousAgents = queryClient.getQueryData(getGetApiAgentsQueryKey());
+
+				// Optimistically update to the new value
+				queryClient.setQueryData(getGetApiAgentsQueryKey(), (old: any) => {
+					if (!old || old.status !== 200) return old;
+
+					const optimisticAgent = {
+						id: `temp-${Date.now()}`, // Temporary ID
+						name: variables.data.name,
+						created_at: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
+						updated_at: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
+						persona: {
+							version: 0,
+							core_values: [],
+							thinking_style: "",
+							personality_traits: [],
+							background: "",
+						},
+					};
+
+					return {
+						...old,
+						data: {
+							...old.data,
+							agents: [...(old.data.agents || []), optimisticAgent],
+						},
+					};
+				});
+
+				return { previousAgents };
+			},
+			onError: (err, variables, context) => {
+				// Rollback on error
+				if (context?.previousAgents) {
+					queryClient.setQueryData(getGetApiAgentsQueryKey(), context.previousAgents);
+				}
+			},
+			onSettled: () => {
+				// Refetch after mutation completes
+				queryClient.invalidateQueries({ queryKey: getGetApiAgentsQueryKey() });
+			},
+		},
+	});
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -24,8 +79,9 @@ export default function NewAgent() {
 
 		try {
 			setError(null);
-
+			console.log("Submitting new agent with name:", name);
 			const response = await createAgentMutation.mutateAsync({ data: { name: name.trim() } });
+			console.log("Agent created successfully:", response);
 
 			// Redirect to agent detail page
 			if (response.data && "id" in response.data) {

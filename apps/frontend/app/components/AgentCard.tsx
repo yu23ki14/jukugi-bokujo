@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { AgentSummary } from "../hooks/backend";
+import { formatDate } from "../utils/date";
 
 interface AgentCardProps {
 	agent: AgentSummary;
@@ -55,9 +56,7 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
 			</div>
 
 			<div className="mt-4 pt-4 border-t border-gray-200">
-				<p className="text-xs text-gray-500">
-					作成日: {new Date(agent.created_at).toLocaleDateString("ja-JP")}
-				</p>
+				<p className="text-xs text-gray-500">作成日: {formatDate(agent.created_at)}</p>
 			</div>
 		</div>
 	);

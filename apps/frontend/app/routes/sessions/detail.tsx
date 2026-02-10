@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { SessionTimeline } from "../../components/SessionTimeline";
 import { useGetApiSessionsId, useGetApiSessionsIdTurns } from "../../hooks/backend";
+import { formatDateTime } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Session Detail - Jukugi Bokujo" }];
@@ -148,34 +149,57 @@ export default function SessionDetailPage() {
 							<div className="bg-white rounded-lg shadow p-6 mb-6">
 								<h2 className="text-xl font-bold mb-4">Session Analysis</h2>
 								<div className="space-y-4">
+									{/* Scores */}
+									<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+										<div className="text-center p-3 bg-gray-50 rounded">
+											<div className="text-2xl font-bold text-blue-600">
+												{session.judge_verdict.quality_score}
+											</div>
+											<div className="text-xs text-gray-600 mt-1">Quality</div>
+										</div>
+										<div className="text-center p-3 bg-gray-50 rounded">
+											<div className="text-2xl font-bold text-green-600">
+												{session.judge_verdict.cooperation_score}
+											</div>
+											<div className="text-xs text-gray-600 mt-1">Cooperation</div>
+										</div>
+										<div className="text-center p-3 bg-gray-50 rounded">
+											<div className="text-2xl font-bold text-purple-600">
+												{session.judge_verdict.convergence_score}
+											</div>
+											<div className="text-xs text-gray-600 mt-1">Convergence</div>
+										</div>
+										<div className="text-center p-3 bg-gray-50 rounded">
+											<div className="text-2xl font-bold text-orange-600">
+												{session.judge_verdict.novelty_score}
+											</div>
+											<div className="text-xs text-gray-600 mt-1">Novelty</div>
+										</div>
+									</div>
+
 									<div>
 										<h3 className="font-semibold text-gray-700 mb-2">Summary</h3>
 										<p className="text-gray-600">{session.judge_verdict.summary}</p>
 									</div>
 
-									{session.judge_verdict.key_points.length > 0 && (
-										<div>
-											<h3 className="font-semibold text-gray-700 mb-2">Key Points</h3>
-											<ul className="list-disc list-inside space-y-1">
-												{session.judge_verdict.key_points.map((point, idx) => (
-													<li key={idx} className="text-gray-600">
-														{point}
-													</li>
-												))}
-											</ul>
-										</div>
-									)}
+									{session.judge_verdict.highlights &&
+										session.judge_verdict.highlights.length > 0 && (
+											<div>
+												<h3 className="font-semibold text-gray-700 mb-2">Highlights</h3>
+												<ul className="list-disc list-inside space-y-1">
+													{session.judge_verdict.highlights.map((highlight, idx) => (
+														<li key={idx} className="text-gray-600">
+															{highlight}
+														</li>
+													))}
+												</ul>
+											</div>
+										)}
 
-									{session.judge_verdict.remaining_disagreements.length > 0 && (
+									{session.judge_verdict.consensus && (
 										<div>
-											<h3 className="font-semibold text-gray-700 mb-2">Remaining Disagreements</h3>
-											<ul className="list-disc list-inside space-y-1">
-												{session.judge_verdict.remaining_disagreements.map((disagreement, idx) => (
-													<li key={idx} className="text-gray-600">
-														{disagreement}
-													</li>
-												))}
-											</ul>
+											<h3 className="font-semibold text-gray-700 mb-2">Consensus</h3>
+											<p className="text-gray-600">{session.judge_verdict.consensus}</p>
 										</div>
 									)}
 								</div>
@@ -191,11 +215,9 @@ export default function SessionDetailPage() {
 						{/* Timestamps */}
 						{(session.started_at || session.completed_at) && (
 							<div className="mt-6 text-sm text-gray-500 flex gap-6">
-								{session.started_at && (
-									<span>Started: {new Date(session.started_at).toLocaleString("ja-JP")}</span>
-								)}
+								{session.started_at && <span>Started: {formatDateTime(session.started_at)}</span>}
 								{session.completed_at && (
-									<span>Completed: {new Date(session.completed_at).toLocaleString("ja-JP")}</span>
+									<span>Completed: {formatDateTime(session.completed_at)}</span>
 								)}
 							</div>
 						)}

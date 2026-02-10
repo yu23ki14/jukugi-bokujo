@@ -9,17 +9,37 @@ import { z } from "@hono/zod-openapi";
  */
 export const JudgeVerdictSchema = z
 	.object({
+		quality_score: z.number().int().min(1).max(10).openapi({
+			description: "Quality score of the deliberation (1-10)",
+			example: 8,
+		}),
+		cooperation_score: z.number().int().min(1).max(10).openapi({
+			description: "Cooperation score among participants (1-10)",
+			example: 9,
+		}),
+		convergence_score: z.number().int().min(1).max(10).openapi({
+			description: "Convergence score towards consensus (1-10)",
+			example: 7,
+		}),
+		novelty_score: z.number().int().min(1).max(10).openapi({
+			description: "Novelty score of perspectives presented (1-10)",
+			example: 6,
+		}),
 		summary: z.string().openapi({
-			description: "Summary of the deliberation",
-			example: "The discussion reached consensus on renewable energy adoption",
+			description: "Summary of the deliberation evaluation",
+			example:
+				"The discussion reached consensus on renewable energy adoption with strong cooperation",
 		}),
-		key_points: z.array(z.string()).openapi({
-			description: "Key points from the deliberation",
-			example: ["Economic benefits of solar", "Grid stability concerns", "Implementation timeline"],
+		highlights: z.array(z.string()).openapi({
+			description: "Notable statements or highlights from the deliberation",
+			example: [
+				"Economic benefits of solar energy were well articulated",
+				"Grid stability concerns were addressed constructively",
+			],
 		}),
-		remaining_disagreements: z.array(z.string()).openapi({
-			description: "Points where agents still disagree",
-			example: ["Specific subsidy amounts", "Regional implementation order"],
+		consensus: z.string().openapi({
+			description: "Consensus reached during the deliberation (if any)",
+			example: "Renewable energy adoption should be prioritized with careful grid management",
 		}),
 	})
 	.openapi("JudgeVerdict");

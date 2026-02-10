@@ -16,6 +16,21 @@ migrations_dir = "migrations"
 [triggers]
 crons = ["0 */6 * * *", "*/15 * * * *"]
 
+# Cloudflare Queues
+# - Turn Queue: Processes agent statements in parallel with rate limit control
+[[queues.producers]]
+queue = "turn-processing-queue"
+binding = "TURN_QUEUE"
+
+[[queues.consumers]]
+queue = "turn-processing-queue"
+max_batch_size = 10       # Process up to 10 agents in parallel
+max_batch_timeout = 30    # Wait up to 30s to accumulate messages
+max_retries = 3           # Retry failed messages 3 times
+dead_letter_queue = "turn-processing-dlq"  # Dead letter queue for failed messages
+max_concurrency = 5       # Maximum concurrent consumer executions
+retry_delay = 60          # Wait 60s before retry
+
 # Environment variables (use .dev.vars for local development)
 [vars]
 ENVIRONMENT = "development"

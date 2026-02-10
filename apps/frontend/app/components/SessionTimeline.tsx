@@ -1,4 +1,5 @@
 import type { Turn } from "../hooks/backend";
+import { formatDateTime, formatTime } from "../utils/date";
 
 interface SessionTimelineProps {
 	turns: Turn[];
@@ -32,9 +33,7 @@ export function SessionTimeline({ turns }: SessionTimelineProps) {
 						<div className="flex-1">
 							<h3 className="font-semibold text-lg">Turn {turn.turn_number}</h3>
 							{turn.completed_at && (
-								<p className="text-xs text-gray-500">
-									{new Date(turn.completed_at).toLocaleString("ja-JP")}
-								</p>
+								<p className="text-xs text-gray-500">{formatDateTime(turn.completed_at)}</p>
 							)}
 							{turn.status === "processing" && (
 								<span className="text-xs text-yellow-600">Processing...</span>
@@ -54,7 +53,7 @@ export function SessionTimeline({ turns }: SessionTimelineProps) {
 									<div className="flex items-center gap-2 mb-2">
 										<span className="font-semibold text-gray-900">{statement.agent_name}</span>
 										<span className="text-xs text-gray-500">
-											{new Date(statement.created_at).toLocaleTimeString("ja-JP")}
+											{formatTime(statement.created_at)}
 										</span>
 									</div>
 									<p className="text-gray-700 leading-relaxed whitespace-pre-wrap">

@@ -7,6 +7,7 @@ import {
 	useGetApiAgentsId,
 	usePostApiAgentsAgentIdKnowledge,
 } from "../../hooks/backend";
+import { formatDateTime } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Agent Knowledge - Jukugi Bokujo" }];
@@ -213,7 +214,7 @@ export default function AgentKnowledge() {
 										</div>
 										<p className="text-gray-700 whitespace-pre-wrap">{entry.content}</p>
 										<p className="mt-3 text-xs text-gray-500">
-											Added: {new Date(entry.created_at).toLocaleString("ja-JP")}
+											Added: {formatDateTime(entry.created_at)}
 										</p>
 									</div>
 								))}

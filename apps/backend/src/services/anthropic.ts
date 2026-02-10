@@ -2,6 +2,14 @@
  * Anthropic API service for LLM integration
  */
 
+import Anthropic from "@anthropic-ai/sdk";
+import {
+	API_MAX_RETRIES,
+	API_RETRY_BASE_DELAY,
+	API_RETRY_MAX_DELAY,
+	LLM_MODEL,
+	LLM_TOKEN_LIMITS,
+} from "../config/constants";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
@@ -17,39 +25,118 @@ interface AnthropicRequest {
 	model: string;
 	max_tokens: number;
 	system?: string;
-	messages: Array<{ role: string; content: string }>;
-}
-
-interface AnthropicResponse {
-	content: Array<{ text: string }>;
+	messages: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 /**
- * Call Anthropic API
+ * API Error with rate limit information
+ */
+export class AnthropicAPIError extends Error {
+	constructor(
+		message: string,
+		public status?: number,
+		public retryAfter?: number,
+	) {
+		super(message);
+		this.name = "AnthropicAPIError";
+	}
+}
+
+/**
+ * Check if error is a rate limit error (429)
+ */
+export function isRateLimitError(error: unknown): error is AnthropicAPIError {
+	return error instanceof AnthropicAPIError && error.status === 429;
+}
+
+/**
+ * Calculate exponential backoff delay with jitter
+ */
+function calculateBackoffDelay(attempt: number): number {
+	const exponentialDelay = API_RETRY_BASE_DELAY ** attempt;
+	const jitter = Math.random() * 1000; // 0-1000ms jitter
+	const delayMs = Math.min(exponentialDelay * 1000, API_RETRY_MAX_DELAY * 1000) + jitter;
+	return delayMs;
+}
+
+/**
+ * Sleep for specified milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Call Anthropic API using the official SDK with retry logic
  */
 export async function callAnthropicAPI(
 	env: Bindings,
 	request: AnthropicRequest,
 ): Promise<{ content: string }> {
-	const response = await fetch("https://api.anthropic.com/v1/messages", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"x-api-key": env.ANTHROPIC_API_KEY,
-			"anthropic-version": "2023-06-01",
-		},
-		body: JSON.stringify(request),
+	const client = new Anthropic({
+		apiKey: env.ANTHROPIC_API_KEY,
 	});
 
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Anthropic API error: ${response.statusText} - ${errorText}`);
+	let attempt = 0;
+
+	while (attempt < API_MAX_RETRIES) {
+		try {
+			const message = await client.messages.create({
+				model: request.model,
+				max_tokens: request.max_tokens,
+				system: request.system,
+				messages: request.messages,
+			});
+
+			// Extract text content from the first content block
+			const firstContent = message.content[0];
+			if (firstContent.type === "text") {
+				return { content: firstContent.text };
+			}
+
+			throw new Error("Unexpected response format: first content block is not text");
+		} catch (error) {
+			attempt++;
+
+			// Check if it's a rate limit error
+			if (error instanceof Anthropic.APIError && error.status === 429) {
+				console.warn(`Rate limit hit (attempt ${attempt}/${API_MAX_RETRIES}):`, error.message);
+
+				// Get retry-after from headers if available
+				const retryAfter = error.headers?.["retry-after"];
+				const retryAfterSeconds = retryAfter ? Number.parseInt(retryAfter, 10) : undefined;
+
+				if (attempt < API_MAX_RETRIES) {
+					// Use retry-after if provided, otherwise use exponential backoff
+					const delayMs = retryAfterSeconds
+						? retryAfterSeconds * 1000
+						: calculateBackoffDelay(attempt);
+
+					console.log(`Retrying after ${Math.round(delayMs / 1000)}s...`);
+					await sleep(delayMs);
+					continue;
+				}
+
+				// Max retries reached, throw rate limit error
+				throw new AnthropicAPIError(
+					`Rate limit exceeded after ${API_MAX_RETRIES} retries`,
+					429,
+					retryAfterSeconds,
+				);
+			}
+
+			// Other errors (non-429) should not be retried here
+			if (error instanceof Anthropic.APIError) {
+				throw new AnthropicAPIError(error.message || "Anthropic API error", error.status);
+			}
+
+			// Unknown error
+			throw error;
+		}
 	}
 
-	const data = (await response.json()) as AnthropicResponse;
-	return {
-		content: data.content[0].text,
-	};
+	// Should never reach here
+	throw new Error("Unexpected error in callAnthropicAPI");
 }
 
 /**
@@ -77,8 +164,8 @@ JSONのみを出力し、他の説明は不要です。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: "claude-3-5-sonnet-20241022",
-			max_tokens: 500,
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.INITIAL_PERSONA,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -167,8 +254,8 @@ ${formatAllStatements(allStatements)}
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: "claude-3-5-sonnet-20241022",
-			max_tokens: 800,
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.SESSION_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -242,8 +329,8 @@ JSONのみを出力してください。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: "claude-3-5-sonnet-20241022",
-			max_tokens: 1500,
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.JUDGE_VERDICT,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -322,8 +409,8 @@ JSONのみを出力してください。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: "claude-3-5-sonnet-20241022",
-			max_tokens: 800,
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.PERSONA_UPDATE,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});

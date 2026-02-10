@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { type SessionSummary, useGetApiSessions } from "../../hooks/backend";
+import { formatDateTime } from "../../utils/date";
 
 export function meta() {
 	return [{ title: "Sessions - Jukugi Bokujo" }];
@@ -162,12 +163,12 @@ export default function SessionsIndex() {
 
 									{session.started_at && (
 										<p className="text-xs text-gray-500">
-											Started: {new Date(session.started_at).toLocaleString("ja-JP")}
+											Started: {formatDateTime(session.started_at)}
 										</p>
 									)}
 									{session.completed_at && (
 										<p className="text-xs text-gray-500">
-											Completed: {new Date(session.completed_at).toLocaleString("ja-JP")}
+											Completed: {formatDateTime(session.completed_at)}
 										</p>
 									)}
 								</Link>
