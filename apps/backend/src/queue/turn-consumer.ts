@@ -4,6 +4,11 @@
  */
 
 import { KNOWLEDGE_SLOTS_LIMIT, LLM_MODEL, LLM_TOKEN_LIMITS } from "../config/constants";
+import {
+	buildPhasePromptSection,
+	getConfidenceInstruction,
+	getPhaseConfig,
+} from "../config/deliberation-phases";
 import { callAnthropicAPI, isRateLimitError } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
 import type {
@@ -208,13 +213,11 @@ async function generateStatement(
 		? `\n## ユーザーからの指示（このターンのみ）\n${direction.content}\n`
 		: "";
 
-	const rules = [
-		"1. 他者の意見を尊重し、建設的に議論する",
-		"2. 自分の考えを明確に述べる",
-		"3. 根拠を示す",
-		"4. 150-300文字程度で簡潔に発言する",
-	];
-	if (strategy) rules.push("5. 今回の熟議方針を意識して発言する");
+	const phaseConfig = getPhaseConfig(currentTurn, session.max_turns);
+	const phaseSection = buildPhasePromptSection(phaseConfig, currentTurn, session.max_turns);
+
+	const rules = ["1. 他者の意見を尊重し、建設的に議論する", "2. 根拠を示す"];
+	if (strategy) rules.push("3. 今回の熟議方針を意識して発言する");
 	if (direction) rules.push(`${rules.length + 1}. ユーザーの指示を今回の発言に反映する`);
 
 	const systemPrompt = `あなたは「${agentWithPersona.name}」という名前の熟議エージェントです。
@@ -225,7 +228,9 @@ ${strategySection}
 ## あなたの知識
 ${knowledgeSection}
 ${directionSection}
-## 熟議のルール
+${phaseSection}
+
+## 基本ルール
 ${rules.join("\n")}
 
 あなたの発言は他の参加者と共に読まれ、ユーザーに観察されます。`;
@@ -264,6 +269,7 @@ ${formatPreviousStatements(previousStatements)}
 ## あなたの番です（ターン ${currentTurn}）
 
 上記の議論を踏まえて、あなたの意見を述べてください。
+${getConfidenceInstruction()}
 
 まず<thinking>タグ内で思考プロセスを記述し、その後に発言を出力してください。
 
