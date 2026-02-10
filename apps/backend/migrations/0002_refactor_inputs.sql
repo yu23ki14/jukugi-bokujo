@@ -6,7 +6,7 @@
 -- ============================================================================
 -- Directions Table (replaces direction type from user_inputs)
 -- ============================================================================
-CREATE TABLE directions (
+CREATE TABLE IF NOT EXISTS directions (
   id TEXT PRIMARY KEY,
   agent_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -17,13 +17,13 @@ CREATE TABLE directions (
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_directions_agent_session ON directions(agent_id, session_id);
-CREATE INDEX idx_directions_session_turn ON directions(session_id, turn_number);
+CREATE INDEX IF NOT EXISTS idx_directions_agent_session ON directions(agent_id, session_id);
+CREATE INDEX IF NOT EXISTS idx_directions_session_turn ON directions(session_id, turn_number);
 
 -- ============================================================================
 -- Feedbacks Table (replaces feedback type from user_inputs)
 -- ============================================================================
-CREATE TABLE feedbacks (
+CREATE TABLE IF NOT EXISTS feedbacks (
   id TEXT PRIMARY KEY,
   agent_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -35,13 +35,13 @@ CREATE TABLE feedbacks (
   UNIQUE(agent_id, session_id)
 );
 
-CREATE INDEX idx_feedbacks_agent_id ON feedbacks(agent_id);
-CREATE INDEX idx_feedbacks_session_id ON feedbacks(session_id);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_agent_id ON feedbacks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_session_id ON feedbacks(session_id);
 
 -- ============================================================================
 -- Session Strategies Table (new)
 -- ============================================================================
-CREATE TABLE session_strategies (
+CREATE TABLE IF NOT EXISTS session_strategies (
   id TEXT PRIMARY KEY,
   agent_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE session_strategies (
   UNIQUE(agent_id, session_id)
 );
 
-CREATE INDEX idx_session_strategies_agent_session ON session_strategies(agent_id, session_id);
+CREATE INDEX IF NOT EXISTS idx_session_strategies_agent_session ON session_strategies(agent_id, session_id);
 
 -- ============================================================================
 -- Drop old user_inputs table

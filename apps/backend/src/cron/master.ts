@@ -3,11 +3,8 @@
  * Creates new deliberation sessions for active topics
  */
 
-import {
-	AGENT_ACTIVITY_THRESHOLD_DAYS,
-	SESSION_MAX_TURNS,
-	SESSION_PARTICIPANT_COUNT,
-} from "../config/constants";
+import { AGENT_ACTIVITY_THRESHOLD_DAYS, SESSION_PARTICIPANT_COUNT } from "../config/constants";
+import { getAllModes } from "../config/session-modes/registry";
 import { generateSessionStrategy } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
 import type { Agent, Feedback, Statement, Topic } from "../types/database";
@@ -68,12 +65,19 @@ async function createSessionForTopic(env: Bindings, topic: Topic): Promise<void>
 	const sessionId = generateUUID();
 	const now = getCurrentTimestamp();
 
+	// Pick a random mode
+	const modes = getAllModes();
+	const selectedMode = modes[Math.floor(Math.random() * modes.length)];
+	const maxTurns = selectedMode.defaultMaxTurns;
+
 	await env.DB.prepare(
-		`INSERT INTO sessions (id, topic_id, status, max_turns, created_at, updated_at)
-     VALUES (?, ?, 'pending', ?, ?, ?)`,
+		`INSERT INTO sessions (id, topic_id, status, mode, max_turns, created_at, updated_at)
+     VALUES (?, ?, 'pending', ?, ?, ?, ?)`,
 	)
-		.bind(sessionId, topic.id, SESSION_MAX_TURNS, now, now)
+		.bind(sessionId, topic.id, selectedMode.id, maxTurns, now, now)
 		.run();
+
+	console.log(`Selected mode: ${selectedMode.name} (${selectedMode.id}), maxTurns: ${maxTurns}`);
 
 	// 3. Select active agents (fixed count: 4 agents)
 	const participantCount = SESSION_PARTICIPANT_COUNT;

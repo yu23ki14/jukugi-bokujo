@@ -31,7 +31,7 @@ services:
     volumes:
       - ./apps/backend/src:/app/apps/backend/src:ro
       - ./apps/backend/.dev.vars:/app/apps/backend/.dev.vars:ro
-      - backend_wrangler:/app/apps/backend/.wrangler
+      - ./apps/backend/.wrangler:/app/apps/backend/.wrangler
     stdin_open: true
     tty: true
     networks:
@@ -41,5 +41,3 @@ networks:
   jukugi-network:
     driver: bridge
 
-volumes:
-  backend_wrangler:

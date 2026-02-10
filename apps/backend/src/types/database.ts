@@ -58,10 +58,14 @@ export interface Topic {
 
 export type SessionStatus = "pending" | "active" | "completed" | "cancelled";
 
+export type SessionMode = "double_diamond" | "free_discussion";
+
 export interface Session {
 	id: string;
 	topic_id: string;
 	status: SessionStatus;
+	mode: SessionMode;
+	mode_config: string | null; // JSON string
 	participant_count: number;
 	current_turn: number;
 	max_turns: number;

@@ -50,6 +50,11 @@ export const JudgeVerdictSchema = z
 export const SessionStatusEnum = z.enum(["pending", "active", "completed", "cancelled"]);
 
 /**
+ * Session mode enum
+ */
+export const SessionModeEnum = z.enum(["double_diamond", "free_discussion"]);
+
+/**
  * Turn status enum
  */
 export const TurnStatusEnum = z.enum(["pending", "processing", "completed", "failed"]);
@@ -95,6 +100,10 @@ export const SessionSummarySchema = z
 			.openapi({
 				description: "Topic information",
 			}),
+		mode: SessionModeEnum.openapi({
+			description: "Deliberation mode",
+			example: "double_diamond",
+		}),
 		status: SessionStatusEnum.openapi({
 			description: "Session status (pending | active | completed | cancelled)",
 			example: "active",
@@ -184,6 +193,10 @@ export const GetSessionResponseSchema = z
 			.openapi({
 				description: "Topic information",
 			}),
+		mode: SessionModeEnum.openapi({
+			description: "Deliberation mode",
+			example: "double_diamond",
+		}),
 		status: SessionStatusEnum.openapi({
 			description: "Session status (pending | active | completed | cancelled)",
 			example: "active",

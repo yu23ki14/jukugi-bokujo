@@ -78,7 +78,7 @@ sessions.openapi(listSessionsRoute, async (c) => {
 		// Build query to get sessions where user's agents participated
 		let query = `
       SELECT DISTINCT
-        s.id, s.topic_id, s.status, s.current_turn, s.max_turns,
+        s.id, s.topic_id, s.status, s.mode, s.current_turn, s.max_turns,
         s.participant_count, s.started_at, s.completed_at,
         t.title as topic_title
       FROM sessions s
@@ -135,6 +135,7 @@ sessions.openapi(listSessionsRoute, async (c) => {
 					id: session.topic_id,
 					title: session.topic_title,
 				},
+				mode: session.mode ?? "double_diamond",
 				status: session.status,
 				current_turn: session.current_turn,
 				max_turns: session.max_turns,
@@ -278,6 +279,7 @@ sessions.openapi(getSessionRoute, async (c) => {
 				title: session.topic_title,
 				description: session.topic_description,
 			},
+			mode: session.mode ?? "double_diamond",
 			status: session.status,
 			current_turn: session.current_turn,
 			max_turns: session.max_turns,

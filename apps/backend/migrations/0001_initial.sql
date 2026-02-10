@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Users Table
 -- ============================================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,              -- Clerk user ID
   created_at INTEGER NOT NULL,      -- UNIX timestamp
   updated_at INTEGER NOT NULL
@@ -13,7 +13,7 @@ CREATE TABLE users (
 -- ============================================================================
 -- Agents Table
 -- ============================================================================
-CREATE TABLE agents (
+CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,              -- UUID
   user_id TEXT NOT NULL,            -- Clerk user ID
   name TEXT NOT NULL,               -- Agent name
@@ -23,12 +23,12 @@ CREATE TABLE agents (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_agents_user_id ON agents(user_id);
+CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id);
 
 -- ============================================================================
 -- Topics Table
 -- ============================================================================
-CREATE TABLE topics (
+CREATE TABLE IF NOT EXISTS topics (
   id TEXT PRIMARY KEY,              -- UUID
   title TEXT NOT NULL,              -- Topic title
   description TEXT NOT NULL,        -- Topic description
@@ -37,12 +37,12 @@ CREATE TABLE topics (
   updated_at INTEGER NOT NULL
 );
 
-CREATE INDEX idx_topics_status ON topics(status);
+CREATE INDEX IF NOT EXISTS idx_topics_status ON topics(status);
 
 -- ============================================================================
 -- Sessions Table
 -- ============================================================================
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,              -- UUID
   topic_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending', -- pending | active | completed | cancelled
@@ -58,14 +58,14 @@ CREATE TABLE sessions (
   FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_sessions_status ON sessions(status);
-CREATE INDEX idx_sessions_topic_id ON sessions(topic_id);
-CREATE INDEX idx_sessions_started_at ON sessions(started_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_topic_id ON sessions(topic_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
 
 -- ============================================================================
 -- Session Participants Table
 -- ============================================================================
-CREATE TABLE session_participants (
+CREATE TABLE IF NOT EXISTS session_participants (
   id TEXT PRIMARY KEY,              -- UUID
   session_id TEXT NOT NULL,
   agent_id TEXT NOT NULL,
@@ -76,14 +76,14 @@ CREATE TABLE session_participants (
   UNIQUE(session_id, agent_id)
 );
 
-CREATE INDEX idx_session_participants_session_id ON session_participants(session_id);
-CREATE INDEX idx_session_participants_agent_id ON session_participants(agent_id);
-CREATE INDEX idx_session_participants_speaking_order ON session_participants(session_id, speaking_order);
+CREATE INDEX IF NOT EXISTS idx_session_participants_session_id ON session_participants(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_participants_agent_id ON session_participants(agent_id);
+CREATE INDEX IF NOT EXISTS idx_session_participants_speaking_order ON session_participants(session_id, speaking_order);
 
 -- ============================================================================
 -- Turns Table
 -- ============================================================================
-CREATE TABLE turns (
+CREATE TABLE IF NOT EXISTS turns (
   id TEXT PRIMARY KEY,              -- UUID
   session_id TEXT NOT NULL,
   turn_number INTEGER NOT NULL,     -- Turn number (starting from 1)
@@ -95,14 +95,14 @@ CREATE TABLE turns (
   UNIQUE(session_id, turn_number)
 );
 
-CREATE INDEX idx_turns_session_id ON turns(session_id);
-CREATE INDEX idx_turns_status ON turns(status);
-CREATE INDEX idx_turns_session_turn ON turns(session_id, turn_number);
+CREATE INDEX IF NOT EXISTS idx_turns_session_id ON turns(session_id);
+CREATE INDEX IF NOT EXISTS idx_turns_status ON turns(status);
+CREATE INDEX IF NOT EXISTS idx_turns_session_turn ON turns(session_id, turn_number);
 
 -- ============================================================================
 -- Statements Table
 -- ============================================================================
-CREATE TABLE statements (
+CREATE TABLE IF NOT EXISTS statements (
   id TEXT PRIMARY KEY,              -- UUID
   turn_id TEXT NOT NULL,
   agent_id TEXT NOT NULL,
@@ -113,14 +113,14 @@ CREATE TABLE statements (
   FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_statements_turn_id ON statements(turn_id);
-CREATE INDEX idx_statements_agent_id ON statements(agent_id);
-CREATE INDEX idx_statements_created_at ON statements(created_at);
+CREATE INDEX IF NOT EXISTS idx_statements_turn_id ON statements(turn_id);
+CREATE INDEX IF NOT EXISTS idx_statements_agent_id ON statements(agent_id);
+CREATE INDEX IF NOT EXISTS idx_statements_created_at ON statements(created_at);
 
 -- ============================================================================
 -- Knowledge Entries Table
 -- ============================================================================
-CREATE TABLE knowledge_entries (
+CREATE TABLE IF NOT EXISTS knowledge_entries (
   id TEXT PRIMARY KEY,              -- UUID
   agent_id TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -131,13 +131,13 @@ CREATE TABLE knowledge_entries (
   FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_knowledge_agent_id ON knowledge_entries(agent_id);
-CREATE INDEX idx_knowledge_created_at ON knowledge_entries(created_at);
+CREATE INDEX IF NOT EXISTS idx_knowledge_agent_id ON knowledge_entries(agent_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_created_at ON knowledge_entries(created_at);
 
 -- ============================================================================
 -- User Inputs Table
 -- ============================================================================
-CREATE TABLE user_inputs (
+CREATE TABLE IF NOT EXISTS user_inputs (
   id TEXT PRIMARY KEY,              -- UUID
   agent_id TEXT NOT NULL,
   input_type TEXT NOT NULL,         -- direction | knowledge | feedback
@@ -147,14 +147,14 @@ CREATE TABLE user_inputs (
   FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_user_inputs_agent_id ON user_inputs(agent_id);
-CREATE INDEX idx_user_inputs_type ON user_inputs(input_type);
-CREATE INDEX idx_user_inputs_applied_at ON user_inputs(applied_at);
+CREATE INDEX IF NOT EXISTS idx_user_inputs_agent_id ON user_inputs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_user_inputs_type ON user_inputs(input_type);
+CREATE INDEX IF NOT EXISTS idx_user_inputs_applied_at ON user_inputs(applied_at);
 
 -- ============================================================================
 -- Initial Data: Demo Topic
 -- ============================================================================
-INSERT INTO topics (id, title, description, status, created_at, updated_at)
+INSERT OR IGNORE INTO topics (id, title, description, status, created_at, updated_at)
 VALUES (
   '00000000-0000-0000-0000-000000000001',
   'デモトピック：地域活性化について',

@@ -4,11 +4,7 @@
  */
 
 import { KNOWLEDGE_SLOTS_LIMIT, LLM_MODEL, LLM_TOKEN_LIMITS } from "../config/constants";
-import {
-	buildPhasePromptSection,
-	getConfidenceInstruction,
-	getPhaseConfig,
-} from "../config/deliberation-phases";
+import { getModeStrategy } from "../config/session-modes/registry";
 import { callAnthropicAPI, isRateLimitError } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
 import type {
@@ -114,7 +110,11 @@ async function getSession(
 ): Promise<(Session & { topic_title: string; topic_description: string }) | null> {
 	return await db
 		.prepare(
-			`SELECT s.*, t.title as topic_title, t.description as topic_description
+			`SELECT s.id, s.topic_id, s.status, s.mode, s.mode_config,
+              s.participant_count, s.current_turn, s.max_turns,
+              s.summary, s.judge_verdict, s.started_at, s.completed_at,
+              s.created_at, s.updated_at,
+              t.title as topic_title, t.description as topic_description
        FROM sessions s
        JOIN topics t ON s.topic_id = t.id
        WHERE s.id = ?`,
@@ -213,8 +213,13 @@ async function generateStatement(
 		? `\n## ユーザーからの指示（このターンのみ）\n${direction.content}\n`
 		: "";
 
-	const phaseConfig = getPhaseConfig(currentTurn, session.max_turns);
-	const phaseSection = buildPhasePromptSection(phaseConfig, currentTurn, session.max_turns);
+	const modeStrategy = getModeStrategy(session.mode ?? "double_diamond");
+	const phaseConfig = modeStrategy.getPhaseConfig(currentTurn, session.max_turns);
+	const phaseSection = modeStrategy.buildPhasePromptSection(
+		phaseConfig,
+		currentTurn,
+		session.max_turns,
+	);
 
 	const rules = ["1. 他者の意見を尊重し、建設的に議論する", "2. 根拠を示す"];
 	if (strategy) rules.push("3. 今回の熟議方針を意識して発言する");
@@ -269,7 +274,7 @@ ${formatPreviousStatements(previousStatements)}
 ## あなたの番です（ターン ${currentTurn}）
 
 上記の議論を踏まえて、あなたの意見を述べてください。
-${getConfidenceInstruction()}
+${modeStrategy.getUserPromptSuffix(currentTurn, session.max_turns)}
 
 まず<thinking>タグ内で思考プロセスを記述し、その後に発言を出力してください。
 
