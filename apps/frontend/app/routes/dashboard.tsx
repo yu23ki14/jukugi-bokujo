@@ -52,6 +52,25 @@ function getTimeTheme(): {
 	return { greeting: "お疲れさまです", bgClass: "bg-indigo-950", cssVars: darkCssVars };
 }
 
+function getNextSessionTime(): string {
+	const now = new Date();
+	const utcHour = now.getUTCHours();
+	// Master Cron runs at UTC 0:00, 6:00, 12:00, 18:00
+	const cronHours = [0, 6, 12, 18];
+	const nextHour = cronHours.find((h) => h > utcHour);
+
+	const next = new Date(now);
+	next.setUTCMinutes(0, 0, 0);
+	if (nextHour !== undefined) {
+		next.setUTCHours(nextHour);
+	} else {
+		next.setUTCDate(next.getUTCDate() + 1);
+		next.setUTCHours(0);
+	}
+
+	return next.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
 function getRanchWeather(
 	activeSessionCount: number,
 	feedbackCount: number,
@@ -178,10 +197,10 @@ function RanchHeader({
 			<h1 className="text-2xl font-bold mb-1">
 				{weather.emoji} {greeting}、{userName}さん
 			</h1>
-			<p className="text-muted-foreground mb-3">今日の牧場は「{weather.label}」です</p>
+			<p className="text-muted-foreground mb-3">今の牧場は「{weather.label}」です</p>
 			<div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
 				<span>🐄 エージェント {agentCount}頭</span>
-				<span>📝 出張中 {activeSessionCount}頭</span>
+				<span>📝 進行中の熟議 {activeSessionCount}件</span>
 				<span>💬 フィードバック待ち {feedbackCount}件</span>
 			</div>
 		</div>
@@ -354,8 +373,8 @@ function FeedbackWantedSection({
 						</CarouselItem>
 					))}
 				</CarouselContent>
-				<CarouselPrevious className="size-8" />
-				<CarouselNext className="size-8" />
+				<CarouselPrevious variant="secondary" className="size-8" />
+				<CarouselNext variant="secondary" className="size-8" />
 			</Carousel>
 		</div>
 	);
@@ -478,9 +497,12 @@ function AgentsDashboardView({
 						</Button>
 					</div>
 					{activeSessions.length === 0 ? (
-						<EmptyState message="進行中の議論はありません" />
+						<EmptyState
+							message="進行中の議論はありません"
+							description={`次のセッションは ${getNextSessionTime()} 頃に始まります`}
+						/>
 					) : (
-						<div className="space-y-4">
+						<div className="space-y-4 flex flex-col gap-1">
 							{activeSessions.map((session: SessionSummary) => (
 								<Link key={session.id} to={`/sessions/${session.id}`}>
 									<Card className="hover:shadow-lg transition">

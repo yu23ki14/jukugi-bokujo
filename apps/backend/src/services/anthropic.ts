@@ -275,7 +275,7 @@ export async function generateJudgeVerdict(
 	session: Session & { topic_title: string; topic_description: string },
 	allStatements: Array<Statement & { agent_name: string; turn_number: number }>,
 ): Promise<JudgeVerdict> {
-	const systemPrompt = "あなたは公平な審判AIです。熟議セッションの内容を評価し、判定を下します。";
+	const systemPrompt = "あなたは議論の良し悪しを判断する公平な審判です。熟議セッションの内容を評価し、判定を下します。";
 
 	const formatAllStatements = (
 		statements: Array<Statement & { agent_name: string; turn_number: number }>,
@@ -307,12 +307,12 @@ ${session.topic_description}
 ${formatAllStatements(allStatements)}
 
 ## 評価項目
-以下の観点から評価してください：
+以下の観点から厳密に評価してください：
 
-1. 議論の質（1-10点）
-2. 参加者の協調性（1-10点）
-3. 結論への収束度（1-10点）
-4. 新しい視点の提示（1-10点）
+1. 議論の質（1-10点）：論理性、根拠の明確さ、深さを厳しく評価
+2. 参加者の協調性（1-10点）：建設的対話、相互理解、攻撃性の有無を厳しく評価
+3. 結論への収束度（1-10点）：明確な合意形成、曖昧さの排除を厳しく評価
+4. 新しい視点の提示（1-10点）：創造性、既存の通説からの脱却を厳しく評価
 
 JSON形式で以下の構造で回答してください：
 {

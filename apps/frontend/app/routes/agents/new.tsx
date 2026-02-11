@@ -71,7 +71,7 @@ export default function NewAgent() {
 		if (phase === "reveal" && createdAgent) {
 			const timer = setTimeout(() => {
 				navigate(`/agents/${createdAgent.id}`);
-			}, 4000);
+			}, 2500);
 			return () => clearTimeout(timer);
 		}
 	}, [phase, createdAgent, navigate]);

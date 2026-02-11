@@ -45,7 +45,7 @@ export default function AgentsIndex() {
 				)}
 
 				{!loading && !error && agents.length > 0 && (
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+					<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
 						{agents.map((agent: AgentSummary) => (
 							<AgentCard key={agent.id} agent={agent} />
 						))}

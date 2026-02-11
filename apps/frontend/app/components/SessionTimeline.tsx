@@ -103,7 +103,7 @@ function LatestTurnCard({
 				</div>
 				<div className="space-y-3">
 					{turn.statements && turn.statements.length > 0 ? (
-						turn.statements.map((statement) => (
+						[...turn.statements].reverse().map((statement) => (
 							<StatementBubble
 								key={statement.id}
 								statement={statement}
@@ -204,7 +204,7 @@ function CollapsibleTurn({
 			{isExpanded && (
 				<div className="px-3 pb-3 space-y-2">
 					{turn.statements && turn.statements.length > 0 ? (
-						turn.statements.map((statement) => (
+						[...turn.statements].reverse().map((statement) => (
 							<StatementBubble
 								key={statement.id}
 								statement={statement}

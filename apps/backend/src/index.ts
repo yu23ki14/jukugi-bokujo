@@ -483,69 +483,71 @@ async function handleQueueEvent(
 ): Promise<void> {
 	console.log(`[Queue Consumer] Processing batch of ${batch.messages.length} messages`);
 
-	// Process messages sequentially (each message = one agent in speaking order)
-	for (const message of batch.messages) {
-		// 1. Process this agent's statement
-		try {
-			const result = await processAgentStatement(env, message.body);
+	// Process messages in parallel
+	await Promise.all(
+		batch.messages.map(async (message) => {
+			// 1. Process this agent's statement
+			try {
+				const result = await processAgentStatement(env, message.body);
 
-			if (result.success) {
-				console.log(
-					`[Queue Consumer] Successfully processed agent ${result.agentId} ` +
-						`(order ${message.body.speakingOrder}), statement: ${result.statementId}`,
-				);
-				message.ack();
-			} else {
-				// Failed but don't block the chain - ack and move on
+				if (result.success) {
+					console.log(
+						`[Queue Consumer] Successfully processed agent ${result.agentId} ` +
+							`(order ${message.body.speakingOrder}), statement: ${result.statementId}`,
+					);
+					message.ack();
+				} else {
+					// Failed but don't block the chain - ack and move on
+					console.error(
+						`[Queue Consumer] Processing failed for agent ${result.agentId}: ${result.error}, ` +
+							`skipping and continuing chain`,
+					);
+					message.ack();
+				}
+			} catch (error) {
 				console.error(
-					`[Queue Consumer] Processing failed for agent ${result.agentId}: ${result.error}, ` +
-						`skipping and continuing chain`,
+					`[Queue Consumer] Unexpected error for agent ${message.body.agentId}, ` +
+						`skipping and continuing chain:`,
+					error,
 				);
 				message.ack();
 			}
-		} catch (error) {
-			console.error(
-				`[Queue Consumer] Unexpected error for agent ${message.body.agentId}, ` +
-					`skipping and continuing chain:`,
-				error,
-			);
-			message.ack();
-		}
 
-		// 2. Always chain to next agent or complete the turn
-		try {
-			const nextParticipant = await getNextSessionParticipant(
-				env.DB,
-				message.body.sessionId,
-				message.body.speakingOrder,
-			);
-
-			if (nextParticipant) {
-				await env.TURN_QUEUE.send({
-					turnId: message.body.turnId,
-					sessionId: message.body.sessionId,
-					agentId: nextParticipant.agentId,
-					turnNumber: message.body.turnNumber,
-					speakingOrder: nextParticipant.speakingOrder,
-					attempt: 0,
-				});
-				console.log(
-					`[Queue Consumer] Chained next agent (order ${nextParticipant.speakingOrder}) ` +
-						`for turn ${message.body.turnId}`,
-				);
-			} else {
-				// Last agent in order - complete the turn regardless of failures
-				await checkAndCompleteTurn(
-					env,
-					message.body.turnId,
+			// 2. Always chain to next agent or complete the turn
+			try {
+				const nextParticipant = await getNextSessionParticipant(
+					env.DB,
 					message.body.sessionId,
-					message.body.turnNumber,
+					message.body.speakingOrder,
 				);
+
+				if (nextParticipant) {
+					await env.TURN_QUEUE.send({
+						turnId: message.body.turnId,
+						sessionId: message.body.sessionId,
+						agentId: nextParticipant.agentId,
+						turnNumber: message.body.turnNumber,
+						speakingOrder: nextParticipant.speakingOrder,
+						attempt: 0,
+					});
+					console.log(
+						`[Queue Consumer] Chained next agent (order ${nextParticipant.speakingOrder}) ` +
+							`for turn ${message.body.turnId}`,
+					);
+				} else {
+					// Last agent in order - complete the turn regardless of failures
+					await checkAndCompleteTurn(
+						env,
+						message.body.turnId,
+						message.body.sessionId,
+						message.body.turnNumber,
+					);
+				}
+			} catch (chainError) {
+				console.error(`[Queue Consumer] Failed to chain next agent:`, chainError);
 			}
-		} catch (chainError) {
-			console.error(`[Queue Consumer] Failed to chain next agent:`, chainError);
-		}
-	}
+		}),
+	);
 }
 
 // ============================================================================

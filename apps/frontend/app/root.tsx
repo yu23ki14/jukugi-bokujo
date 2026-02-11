@@ -1,4 +1,4 @@
-import { ClerkProvider, SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, useAuth, UserButton } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { MenuIcon } from "lucide-react";
@@ -84,12 +84,14 @@ export default function App() {
 		setMobileMenuOpen(false);
 	}, []);
 
+	const {isSignedIn} = useAuth();
+
 	return (
 		<div className="min-h-screen bg-background">
 			<nav className="bg-card shadow border-b border-border">
 				<div className="container mx-auto px-4 py-4 flex justify-between items-center">
 					<div className="flex gap-2 items-center">
-						<Link to="/" className="text-xl font-bold text-primary hover:text-primary/80">
+						<Link to={isSignedIn ? "/dashboard" : "/"} className="text-xl font-bold text-primary hover:text-primary/80">
 							熟議牧場
 						</Link>
 						{/* Desktop nav links */}
@@ -208,7 +210,7 @@ export default function App() {
 				</SheetContent>
 			</Sheet>
 
-			<main className="container mx-auto px-4 py-8">
+			<main className="container max-w-xl mx-auto px-4 py-8">
 				<Outlet />
 			</main>
 		</div>
