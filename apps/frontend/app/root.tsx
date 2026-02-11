@@ -213,6 +213,17 @@ export default function App() {
 			<main className="container max-w-xl mx-auto px-4 py-8">
 				<Outlet />
 			</main>
+
+			<footer className="py-6 text-center text-xs text-muted-foreground">
+				<a
+					href="https://github.com/yu23ki14/jukugi-bokujo"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="hover:text-foreground transition-colors"
+				>
+					GitHub
+				</a>
+			</footer>
 		</div>
 	);
 }
