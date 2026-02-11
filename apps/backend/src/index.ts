@@ -385,7 +385,7 @@ import { directionsRouter } from "./routes/directions";
 import { feedbackRequestsRouter } from "./routes/feedback-requests";
 import { feedbacksRouter } from "./routes/feedbacks";
 import { knowledgeRouter } from "./routes/knowledge";
-import { sessionsRouter } from "./routes/sessions";
+import { protectedSessionsRouter, publicSessionsRouter } from "./routes/sessions";
 import { adminTopicsRouter, publicTopicsRouter } from "./routes/topics";
 
 app.route("/api", publicTopicsRouter); // Public topics (no auth) - mount first
@@ -395,7 +395,8 @@ app.route("/api", knowledgeRouter); // Mounts /agents/:agentId/knowledge and /kn
 app.route("/api", directionsRouter); // Mounts /agents/:agentId/directions
 app.route("/api", feedbacksRouter); // Mounts /agents/:agentId/feedbacks and /agents/:agentId/strategies
 app.route("/api", feedbackRequestsRouter); // Mounts /feedback-requests
-app.route("/api/sessions", sessionsRouter);
+app.route("/api/sessions", publicSessionsRouter); // Public sessions (no auth)
+app.route("/api/sessions", protectedSessionsRouter); // Protected sessions (with auth)
 
 // ============================================================================
 // 404 Handler
@@ -424,9 +425,9 @@ app.onError((err, c) => {
 // Cron Handler
 // ============================================================================
 
+import { CRON_SCHEDULE_MASTER, CRON_SCHEDULE_TURN } from "./config/constants";
 import { runMasterCron } from "./cron/master";
 import { runTurnCron } from "./cron/turn";
-import { CRON_SCHEDULE_MASTER, CRON_SCHEDULE_TURN } from "./config/constants";
 
 async function handleScheduledEvent(event: ScheduledEvent, env: Bindings, _ctx: ExecutionContext) {
 	console.log("Cron triggered at:", new Date(event.scheduledTime).toISOString());

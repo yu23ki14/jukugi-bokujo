@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/clerk-react";
 import { Link, useParams } from "react-router";
 import {
 	BackLink,
@@ -7,7 +6,6 @@ import {
 	LoadingState,
 	StatusBadge,
 } from "../../components/design-system";
-import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { type SessionSummary, useGetApiSessions, useGetApiTopicsId } from "../../hooks/backend";
 import { formatDate } from "../../utils/date";
@@ -18,7 +16,6 @@ export function meta() {
 
 export default function TopicDetail() {
 	const { id } = useParams();
-	const { isSignedIn } = useAuth();
 
 	const {
 		data: topicData,
@@ -30,7 +27,7 @@ export default function TopicDetail() {
 		data: sessionsData,
 		isLoading: sessionsLoading,
 		error: sessionsError,
-	} = useGetApiSessions({ limit: 50 }, { query: { enabled: !!isSignedIn } });
+	} = useGetApiSessions({ limit: 50 });
 
 	// Extract data with type narrowing
 	const topic = !topicError && topicData?.data && "title" in topicData.data ? topicData.data : null;
@@ -41,7 +38,7 @@ export default function TopicDetail() {
 	// Filter sessions by topic ID on client side
 	const sessions = allSessions.filter((session) => session.topic.id === id);
 
-	const loading = topicLoading || (isSignedIn && sessionsLoading);
+	const loading = topicLoading || sessionsLoading;
 	const error = topicError;
 
 	return (
@@ -77,22 +74,9 @@ export default function TopicDetail() {
 						</CardContent>
 					</Card>
 
-					<h2 className="text-2xl font-bold mb-4">
-						Related Sessions {isSignedIn && `(${sessions.length})`}
-					</h2>
+					<h2 className="text-2xl font-bold mb-4">このトピックでの議論 ({sessions.length})</h2>
 
-					{!isSignedIn ? (
-						<Card>
-							<CardContent>
-								<p className="text-muted-foreground mb-4">
-									このトピックに関連するセッションを閲覧するにはログインが必要です。
-								</p>
-								<Button asChild>
-									<Link to="/signin">ログインして閲覧する</Link>
-								</Button>
-							</CardContent>
-						</Card>
-					) : sessions.length === 0 ? (
+					{sessions.length === 0 ? (
 						<EmptyState message="No sessions yet for this topic." />
 					) : (
 						<div className="space-y-4">

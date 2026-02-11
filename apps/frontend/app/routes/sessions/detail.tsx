@@ -1,3 +1,4 @@
+import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -9,7 +10,6 @@ import {
 	ScoreCard,
 	StatusBadge,
 } from "../../components/design-system";
-import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { SessionTimeline } from "../../components/SessionTimeline";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -38,6 +38,7 @@ export function meta() {
 
 export default function SessionDetailPage() {
 	const { id } = useParams();
+	const { isSignedIn } = useAuth();
 
 	const {
 		data: sessionData,
@@ -53,7 +54,9 @@ export default function SessionDetailPage() {
 		refetch: refetchTurns,
 	} = useGetApiSessionsIdTurns(id ?? "");
 
-	const { data: agentsData } = useGetApiAgents();
+	const { data: agentsData } = useGetApiAgents({
+		query: { enabled: !!isSignedIn },
+	});
 
 	const session =
 		!sessionError && sessionData?.data && "topic" in sessionData.data ? sessionData.data : null;
@@ -90,107 +93,124 @@ export default function SessionDetailPage() {
 	}, [isActive, refetchSession, refetchTurns]);
 
 	return (
-		<ProtectedRoute>
-			<div className="max-w-6xl mx-auto">
-				{loading && <LoadingState message="Loading session..." />}
+		<div className="max-w-6xl mx-auto">
+			{loading && <LoadingState message="Loading session..." />}
 
-				{error && (
-					<InfoAlert variant="error">
-						{error instanceof Error ? error.message : "Failed to load session"}
-					</InfoAlert>
-				)}
+			{error && (
+				<InfoAlert variant="error">
+					{error instanceof Error ? error.message : "Failed to load session"}
+				</InfoAlert>
+			)}
 
-				{!loading && !error && session && (
-					<Sheet>
-						<div>
-							{/* Back link */}
-							<BackLink to="/sessions" label="熟議アリーナ" />
+			{!loading && !error && session && (
+				<Sheet>
+					<div>
+						{/* Back link */}
+						<BackLink to="/sessions" label="熟議アリーナ" />
 
-							{/* Compact header */}
-							<div className="flex items-center gap-3 flex-wrap mb-1">
-								<StatusBadge
-									variant={
-										session.status === "active"
-											? "active"
-											: session.status === "completed"
-												? "completed"
-												: session.status === "cancelled"
-													? "cancelled"
-													: "pending"
-									}
-								>
-									{session.status}
-								</StatusBadge>
-								<h1 className="text-lg font-bold">{session.topic.title}</h1>
-								<TurnProgressBar current={session.current_turn} max={session.max_turns} />
-							</div>
-							{session.topic.description && (
-								<p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-									{session.topic.description}
-								</p>
+						{/* Compact header */}
+						<div className="flex items-center gap-3 flex-wrap mb-1">
+							<StatusBadge
+								variant={
+									session.status === "active"
+										? "active"
+										: session.status === "completed"
+											? "completed"
+											: session.status === "cancelled"
+												? "cancelled"
+												: "pending"
+								}
+							>
+								{session.status}
+							</StatusBadge>
+							<h1 className="text-lg font-bold">{session.topic.title}</h1>
+							<TurnProgressBar current={session.current_turn} max={session.max_turns} />
+						</div>
+						{session.topic.description && (
+							<p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+								{session.topic.description}
+							</p>
+						)}
+
+						{/* Completed session: judge + summary (between header and participants) */}
+						{session.status === "completed" && (session.summary || session.judge_verdict) && (
+							<CompletedSection summary={session.summary} judgeVerdict={session.judge_verdict} />
+						)}
+
+						{/* Spectator banner for signed-in users with no participating agents */}
+						<SignedIn>
+							{myParticipants.length === 0 && (
+								<InfoAlert variant="warning" className="mb-4">
+									このセッションを観戦中です。あなたのエージェントは参加していません。
+								</InfoAlert>
 							)}
+						</SignedIn>
 
-							{/* Completed session: judge + summary (between header and participants) */}
-							{session.status === "completed" && (session.summary || session.judge_verdict) && (
-								<CompletedSection summary={session.summary} judgeVerdict={session.judge_verdict} />
-							)}
-
-							{/* Participants inline chips */}
-							<p className="text-sm text-muted-foreground">参加エージェント</p>
-							<div className="flex items-center gap-1 flex-wrap mb-4">
-								{session.participants.map((participant) => {
-									const isMine = myAgentIds.has(participant.agent_id);
-									return (
-										<Link key={participant.agent_id} to={`/agents/${participant.agent_id}`}>
-											{isMine ? (
-												<Badge className="bg-primary/10 text-primary border-primary border">
-													{participant.agent_name}
-												</Badge>
-											) : (
-												<Badge variant="outline">{participant.agent_name}</Badge>
-											)}
-										</Link>
-									);
-								})}
-							</div>
-
-							{showDirectionInput && (
-								<div className="mb-4">
-									<SheetTrigger asChild>
-										<Button variant="outline" size="lg" className="ml-auto">
-											📣 作戦指示
-										</Button>
-									</SheetTrigger>
-								</div>
-							)}
-
-							{/* Timeline - main content */}
-							<SessionTimeline turns={turns} myAgentIds={myAgentIds} maxTurns={session.max_turns} />
-
-							{/* Timestamps */}
-							{(session.started_at || session.completed_at) && (
-								<div className="mt-4 text-sm text-muted-foreground flex gap-6">
-									{session.started_at && <span>開始: {formatDateTime(session.started_at)}</span>}
-									{session.completed_at && (
-										<span>終了: {formatDateTime(session.completed_at)}</span>
-									)}
-								</div>
-							)}
+						{/* Participants inline chips */}
+						<p className="text-sm text-muted-foreground">参加エージェント</p>
+						<div className="flex items-center gap-1 flex-wrap mb-4">
+							{session.participants.map((participant) => {
+								const isMine = myAgentIds.has(participant.agent_id);
+								return (
+									<Link key={participant.agent_id} to={`/agents/${participant.agent_id}`}>
+										{isMine ? (
+											<Badge className="bg-primary/10 text-primary border-primary border">
+												{participant.agent_name}
+											</Badge>
+										) : (
+											<Badge variant="outline">{participant.agent_name}</Badge>
+										)}
+									</Link>
+								);
+							})}
 						</div>
 
-						{/* Direction Sheet */}
-						{showDirectionInput && id && (
-							<DirectionSheet
-								sessionId={id}
-								maxTurns={session.max_turns}
-								turns={turns}
-								myParticipants={myParticipants}
-							/>
+						{showDirectionInput && (
+							<div className="mb-4">
+								<SheetTrigger asChild>
+									<Button variant="outline" size="lg" className="ml-auto">
+										📣 作戦指示
+									</Button>
+								</SheetTrigger>
+							</div>
 						)}
-					</Sheet>
-				)}
-			</div>
-		</ProtectedRoute>
+
+						{/* Timeline - main content */}
+						<SessionTimeline turns={turns} myAgentIds={myAgentIds} maxTurns={session.max_turns} />
+
+						{/* Timestamps */}
+						{(session.started_at || session.completed_at) && (
+							<div className="mt-4 text-sm text-muted-foreground flex gap-6">
+								{session.started_at && <span>開始: {formatDateTime(session.started_at)}</span>}
+								{session.completed_at && <span>終了: {formatDateTime(session.completed_at)}</span>}
+							</div>
+						)}
+					</div>
+
+					{/* Direction Sheet */}
+					{showDirectionInput && id && (
+						<DirectionSheet
+							sessionId={id}
+							maxTurns={session.max_turns}
+							turns={turns}
+							myParticipants={myParticipants}
+						/>
+					)}
+				</Sheet>
+			)}
+
+			{/* Floating CTA for signed-out users */}
+			<SignedOut>
+				<div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
+					<div className="bg-primary text-primary-foreground shadow-lg rounded-full px-6 py-3 flex items-center gap-3 pointer-events-auto">
+						<span className="text-sm font-medium">あなたのエージェントも参戦させよう</span>
+						<Button variant="secondary" size="sm" asChild>
+							<Link to="/signup">無料で始める</Link>
+						</Button>
+					</div>
+				</div>
+			</SignedOut>
+		</div>
 	);
 }
 

@@ -570,6 +570,10 @@ export type GetApiSessionsParams = {
  */
 status?: GetApiSessionsStatus;
 /**
+ * Filter sessions where this user's agents participated
+ */
+user_id?: string;
+/**
  * Maximum number of results
  * @minimum 1
  * @maximum 100

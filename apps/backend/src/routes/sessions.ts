@@ -3,7 +3,6 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
 	GetSessionResponseSchema,
@@ -15,13 +14,14 @@ import type { Bindings } from "../types/bindings";
 import type { JudgeVerdict, Session, Statement, Turn } from "../types/database";
 import { handleDatabaseError, notFound } from "../utils/errors";
 
-const sessions = new OpenAPIHono<{ Bindings: Bindings }>();
+// Public sessions router (no authentication)
+const publicSessions = new OpenAPIHono<{ Bindings: Bindings }>();
 
-// Apply authentication to all routes
-sessions.use("/*", clerkAuth);
+// Protected sessions router (with authentication, for future use)
+const protectedSessions = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // ============================================================================
-// GET /api/sessions - List sessions (user's agents participated in)
+// GET /api/sessions - List sessions (public)
 // ============================================================================
 
 const listSessionsRoute = createRoute({
@@ -29,8 +29,8 @@ const listSessionsRoute = createRoute({
 	path: "/",
 	tags: ["Sessions"],
 	summary: "List sessions",
-	description: "Get a list of deliberation sessions where the user's agents participated",
-	security: [{ bearerAuth: [] }],
+	description:
+		"Get a list of deliberation sessions. Optionally filter by user_id to show only sessions where that user's agents participated.",
 	request: {
 		query: ListSessionsQuerySchema,
 	},
@@ -51,14 +51,6 @@ const listSessionsRoute = createRoute({
 				},
 			},
 		},
-		401: {
-			description: "Unauthorized",
-			content: {
-				"application/json": {
-					schema: ErrorResponseSchema,
-				},
-			},
-		},
 		500: {
 			description: "Internal server error",
 			content: {
@@ -70,13 +62,16 @@ const listSessionsRoute = createRoute({
 	},
 });
 
-sessions.openapi(listSessionsRoute, async (c) => {
-	const userId = getAuthUserId(c);
-	const { status, limit, offset } = c.req.valid("query");
+publicSessions.openapi(listSessionsRoute, async (c) => {
+	const { status, user_id, limit, offset } = c.req.valid("query");
 
 	try {
-		// Build query to get sessions where user's agents participated
-		let query = `
+		let query: string;
+		const params: (string | number)[] = [];
+
+		if (user_id) {
+			// Filter by user's agents
+			query = `
       SELECT DISTINCT
         s.id, s.topic_id, s.status, s.mode, s.current_turn, s.max_turns,
         s.participant_count, s.started_at, s.completed_at,
@@ -87,11 +82,21 @@ sessions.openapi(listSessionsRoute, async (c) => {
       JOIN agents a ON sp.agent_id = a.id
       WHERE a.user_id = ?
     `;
-
-		const params: (string | number)[] = [userId];
+			params.push(user_id);
+		} else {
+			// All sessions
+			query = `
+      SELECT
+        s.id, s.topic_id, s.status, s.mode, s.current_turn, s.max_turns,
+        s.participant_count, s.started_at, s.completed_at,
+        t.title as topic_title
+      FROM sessions s
+      JOIN topics t ON s.topic_id = t.id
+    `;
+		}
 
 		if (status) {
-			query += " AND s.status = ?";
+			query += user_id ? " AND s.status = ?" : " WHERE s.status = ?";
 			params.push(status);
 		}
 
@@ -107,18 +112,27 @@ sessions.openapi(listSessionsRoute, async (c) => {
 			>();
 
 		// Get total count
-		let countQuery = `
+		let countQuery: string;
+		const countParams: (string | number)[] = [];
+
+		if (user_id) {
+			countQuery = `
       SELECT COUNT(DISTINCT s.id) as total
       FROM sessions s
       JOIN session_participants sp ON s.id = sp.session_id
       JOIN agents a ON sp.agent_id = a.id
       WHERE a.user_id = ?
     `;
-
-		const countParams: (string | number)[] = [userId];
+			countParams.push(user_id);
+		} else {
+			countQuery = `
+      SELECT COUNT(*) as total
+      FROM sessions s
+    `;
+		}
 
 		if (status) {
-			countQuery += " AND s.status = ?";
+			countQuery += user_id ? " AND s.status = ?" : " WHERE s.status = ?";
 			countParams.push(status);
 		}
 
@@ -151,7 +165,7 @@ sessions.openapi(listSessionsRoute, async (c) => {
 });
 
 // ============================================================================
-// GET /api/sessions/:id - Get session details
+// GET /api/sessions/:id - Get session details (public)
 // ============================================================================
 
 const getSessionRoute = createRoute({
@@ -160,7 +174,6 @@ const getSessionRoute = createRoute({
 	tags: ["Sessions"],
 	summary: "Get session details",
 	description: "Get detailed information about a specific deliberation session",
-	security: [{ bearerAuth: [] }],
 	request: {
 		params: z.object({
 			id: z
@@ -185,14 +198,6 @@ const getSessionRoute = createRoute({
 				},
 			},
 		},
-		401: {
-			description: "Unauthorized",
-			content: {
-				"application/json": {
-					schema: ErrorResponseSchema,
-				},
-			},
-		},
 		404: {
 			description: "Session not found",
 			content: {
@@ -212,8 +217,7 @@ const getSessionRoute = createRoute({
 	},
 });
 
-sessions.openapi(getSessionRoute, async (c) => {
-	const userId = getAuthUserId(c);
+publicSessions.openapi(getSessionRoute, async (c) => {
 	const sessionId = c.req.param("id");
 
 	try {
@@ -234,22 +238,6 @@ sessions.openapi(getSessionRoute, async (c) => {
 
 		if (!session) {
 			return notFound(c, "Session");
-		}
-
-		// Check if user has access (one of their agents participated)
-		const hasAccess = await c.env.DB.prepare(
-			`SELECT COUNT(*) as count
-       FROM session_participants sp
-       JOIN agents a ON sp.agent_id = a.id
-       WHERE sp.session_id = ? AND a.user_id = ?`,
-		)
-			.bind(sessionId, userId)
-			.first<{ count: number }>();
-
-		if (!hasAccess || hasAccess.count === 0) {
-			// Allow viewing any session for MVP
-			// In production, you might want to restrict access
-			// return forbidden(c, "You do not have access to this session");
 		}
 
 		// Get participants
@@ -299,7 +287,7 @@ sessions.openapi(getSessionRoute, async (c) => {
 });
 
 // ============================================================================
-// GET /api/sessions/:id/turns - Get session turns with statements
+// GET /api/sessions/:id/turns - Get session turns with statements (public)
 // ============================================================================
 
 const getSessionTurnsRoute = createRoute({
@@ -308,7 +296,6 @@ const getSessionTurnsRoute = createRoute({
 	tags: ["Sessions"],
 	summary: "Get session turns",
 	description: "Get all turns and statements for a specific deliberation session",
-	security: [{ bearerAuth: [] }],
 	request: {
 		params: z.object({
 			id: z
@@ -333,14 +320,6 @@ const getSessionTurnsRoute = createRoute({
 				},
 			},
 		},
-		401: {
-			description: "Unauthorized",
-			content: {
-				"application/json": {
-					schema: ErrorResponseSchema,
-				},
-			},
-		},
 		404: {
 			description: "Session not found",
 			content: {
@@ -360,8 +339,7 @@ const getSessionTurnsRoute = createRoute({
 	},
 });
 
-sessions.openapi(getSessionTurnsRoute, async (c) => {
-	const _userId = getAuthUserId(c);
+publicSessions.openapi(getSessionTurnsRoute, async (c) => {
 	const sessionId = c.req.param("id");
 
 	try {
@@ -421,4 +399,4 @@ sessions.openapi(getSessionTurnsRoute, async (c) => {
 	}
 });
 
-export { sessions as sessionsRouter };
+export { publicSessions as publicSessionsRouter, protectedSessions as protectedSessionsRouter };

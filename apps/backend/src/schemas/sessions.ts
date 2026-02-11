@@ -60,12 +60,15 @@ export const SessionModeEnum = z.enum(["double_diamond", "free_discussion"]);
 export const TurnStatusEnum = z.enum(["pending", "processing", "completed", "failed"]);
 
 /**
- * List sessions query parameters schema
+ * List sessions query parameters schema (public)
  */
 export const ListSessionsQuerySchema = z.object({
 	status: z.enum(["active", "completed"]).optional().openapi({
 		description: "Filter by session status",
 		example: "active",
+	}),
+	user_id: z.string().optional().openapi({
+		description: "Filter sessions where this user's agents participated",
 	}),
 	limit: z.coerce.number().int().min(1).max(100).default(20).openapi({
 		description: "Maximum number of results",
