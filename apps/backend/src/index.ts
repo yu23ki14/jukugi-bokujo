@@ -6,6 +6,7 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import type { Bindings } from "./types/bindings";
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
@@ -13,6 +14,9 @@ const app = new OpenAPIHono<{ Bindings: Bindings }>();
 // ============================================================================
 // Middleware
 // ============================================================================
+
+// Request/Response logger
+app.use("/*", logger());
 
 // CORS middleware - allow frontend origin
 app.use(

@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2025-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Workers Logs - console.log() output visible in Cloudflare dashboard
+[observability]
+enabled = true
+
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
