@@ -43,9 +43,9 @@ function getTimeTheme(): {
 	cssVars?: React.CSSProperties;
 } {
 	const hour = new Date().getHours();
-	if (5 < hour && hour < 11)
+	if (5 < hour && hour <= 11)
 		return { greeting: "おはようございます", bgClass: "bg-amber-50" };
-	if (11 < hour && hour < 17)
+	if (11 < hour && hour <= 17)
 		return { greeting: "こんにちは", bgClass: "bg-sky-50" };
 	if (17 < hour && hour < 22)
 		return { greeting: "こんばんは", bgClass: "bg-orange-800", cssVars: darkCssVars };
@@ -55,8 +55,8 @@ function getTimeTheme(): {
 function getNextSessionTime(): string {
 	const now = new Date();
 	const utcHour = now.getUTCHours();
-	// Master Cron runs at UTC 0:00, 6:00, 12:00, 18:00
-	const cronHours = [0, 6, 12, 18];
+	// Master Cron runs at UTC 22,2,6,10,14,18 (= JST 7,11,15,19,23,3)
+	const cronHours = [2, 6, 10, 14, 18, 22];
 	const nextHour = cronHours.find((h) => h > utcHour);
 
 	const next = new Date(now);
@@ -65,7 +65,7 @@ function getNextSessionTime(): string {
 		next.setUTCHours(nextHour);
 	} else {
 		next.setUTCDate(next.getUTCDate() + 1);
-		next.setUTCHours(0);
+		next.setUTCHours(cronHours[0]);
 	}
 
 	return next.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });

@@ -24,8 +24,10 @@ app.use(
 				return origin;
 			}
 			// In production, allow specific domains
-			// TODO: Update with production frontend URL
-			return origin;
+			if (origin.includes("https://jukugi-bokujo.pages.dev")) {
+				return origin;
+			}
+			return null;
 		},
 		allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 		allowHeaders: ["Content-Type", "Authorization"],

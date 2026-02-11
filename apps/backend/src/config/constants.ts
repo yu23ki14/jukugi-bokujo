@@ -9,9 +9,10 @@
 
 /**
  * Master cron schedule - Creates new deliberation sessions
- * Format: "0 STAR-SLASH6 * * *" (every 6 hours)
+ * 6 times/day aligned to JST active hours
+ * UTC 22,2,6,10,14,18 = JST 7,11,15,19,23,3
  */
-export const CRON_SCHEDULE_MASTER = "0 */6 * * *";
+export const CRON_SCHEDULE_MASTER = "0 22,2,6,10,14,18 * * *";
 
 /**
  * Turn cron schedule - Processes session turns
@@ -26,7 +27,7 @@ export const CRON_SCHEDULE_TURN = "*/15 * * * *";
 /**
  * Maximum number of agents a user can own
  */
-export const MAX_AGENTS_PER_USER = 4;
+export const MAX_AGENTS_PER_USER = 2;
 
 /**
  * Number of agents participating in each session

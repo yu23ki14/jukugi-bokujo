@@ -7,14 +7,15 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "jukugi-bokujo-db"
-database_id = "cf9812ad-a97b-4030-bb53-fbd8cf4b878d"
+database_id = "3d307504-81b8-42c4-8fee-8ff1e0bf9763"
 migrations_dir = "migrations"
 
 # Cron Triggers
-# - Master Cron: every 6 hours (session generation)
+# - Master Cron: 6 times/day aligned to JST active hours (session generation)
+#   UTC 22,2,6,10,14,18 = JST 7,11,15,19,23,3
 # - Turn Cron: every 15 minutes (turn processing)
 [triggers]
-crons = ["0 */6 * * *", "*/15 * * * *"]
+crons = ["0 22,2,6,10,14,18 * * *", "*/15 * * * *"]
 
 # Cloudflare Queues
 # - Turn Queue: Processes agent statements in parallel with rate limit control
@@ -33,7 +34,7 @@ retry_delay = 60          # Wait 60s before retry
 
 # Environment variables (use .dev.vars for local development)
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 TEST_MODE = "true"
 
 # Secrets (set via `wrangler secret put <KEY>` for production)
