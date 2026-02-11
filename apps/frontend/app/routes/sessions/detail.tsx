@@ -157,7 +157,7 @@ export default function SessionDetailPage() {
 							{showDirectionInput && (
 								<div className="mb-4">
 									<SheetTrigger asChild>
-										<Button variant="outline" size="sm" className="ml-auto">
+										<Button variant="outline" size="lg" className="ml-auto">
 											📣 作戦指示
 										</Button>
 									</SheetTrigger>
@@ -403,7 +403,7 @@ function DirectionSheet({
 						value={content}
 						onChange={setContent}
 						placeholder="例: 経済的な影響に注目して..."
-						maxLength={200}
+						maxLength={80}
 						disabled={createMutation.isPending}
 						required
 					/>
