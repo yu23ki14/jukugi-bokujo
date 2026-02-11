@@ -6,6 +6,7 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import type { Bindings } from "./types/bindings";
 
@@ -411,6 +412,9 @@ app.notFound((c) => {
 // ============================================================================
 
 app.onError((err, c) => {
+	if (err instanceof HTTPException) {
+		return c.json({ error: err.message }, err.status);
+	}
 	console.error("Unhandled error:", err);
 	return c.json(
 		{

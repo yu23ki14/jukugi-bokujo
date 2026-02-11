@@ -4,6 +4,7 @@
 
 import { clerkMiddleware, getAuth as getClerkAuth } from "@hono/clerk-auth";
 import type { Context, MiddlewareHandler } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { Bindings } from "../types/bindings";
 
 export interface AuthContext {
@@ -33,7 +34,7 @@ export function getAuthUserId(c: Context): string {
 	const userId = auth?.userId;
 
 	if (!userId) {
-		throw new Error("Unauthorized: No user ID found");
+		throw new HTTPException(401, { message: "Unauthorized: No user ID found" });
 	}
 
 	return userId;

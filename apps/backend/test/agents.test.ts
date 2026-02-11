@@ -61,6 +61,36 @@ describe("Agents API", () => {
 
 		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)").run();
 
+		await env.DB.prepare(`
+			CREATE TABLE IF NOT EXISTS sessions (
+				id TEXT PRIMARY KEY,
+				topic_id TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'pending',
+				participant_count INTEGER NOT NULL DEFAULT 0,
+				current_turn INTEGER NOT NULL DEFAULT 0,
+				max_turns INTEGER NOT NULL DEFAULT 10,
+				summary TEXT,
+				judge_verdict TEXT,
+				started_at INTEGER,
+				completed_at INTEGER,
+				created_at INTEGER NOT NULL,
+				mode TEXT DEFAULT 'double_diamond'
+			)
+		`).run();
+
+		await env.DB.prepare(`
+			CREATE TABLE IF NOT EXISTS session_participants (
+				id TEXT PRIMARY KEY,
+				session_id TEXT NOT NULL,
+				agent_id TEXT NOT NULL,
+				joined_at INTEGER NOT NULL,
+				speaking_order INTEGER NOT NULL DEFAULT 0,
+				FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+				FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+				UNIQUE(session_id, agent_id)
+			)
+		`).run();
+
 		// Create test users
 		const now = Math.floor(Date.now() / 1000);
 		await env.DB.prepare(
