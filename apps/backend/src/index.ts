@@ -422,21 +422,23 @@ app.onError((err, c) => {
 
 import { runMasterCron } from "./cron/master";
 import { runTurnCron } from "./cron/turn";
+import { CRON_SCHEDULE_MASTER, CRON_SCHEDULE_TURN } from "./config/constants";
 
 async function handleScheduledEvent(event: ScheduledEvent, env: Bindings, _ctx: ExecutionContext) {
 	console.log("Cron triggered at:", new Date(event.scheduledTime).toISOString());
 	console.log("Cron type:", event.cron);
 
 	try {
-		// Both crons run on their scheduled intervals
-		// Master Cron: every 6 hours (0 */6 * * *) - Creates new deliberation sessions
-		// Turn Cron: every 15 minutes (*/15 * * * *) - Processes pending turns
-
-		// Run Master Cron (session generation)
-		await runMasterCron(env);
-
-		// Run Turn Cron (turn processing)
-		await runTurnCron(env);
+		switch (event.cron) {
+			case CRON_SCHEDULE_MASTER:
+				await runMasterCron(env);
+				break;
+			case CRON_SCHEDULE_TURN:
+				await runTurnCron(env);
+				break;
+			default:
+				console.warn("Unknown cron schedule:", event.cron);
+		}
 
 		console.log("Cron execution completed successfully");
 	} catch (error) {
