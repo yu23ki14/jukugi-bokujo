@@ -43,15 +43,11 @@ export default function Home() {
 		<div className="-mx-4 -my-8">
 			{/* Hero Section */}
 			<div className="text-center py-20 px-4">
-				<p className="text-lg text-muted-foreground mb-4 tracking-widest">
-					AI放牧シミュレーション
-				</p>
+				<p className="text-lg text-muted-foreground mb-4 tracking-widest">AI放牧シミュレーション</p>
 				<h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
 					熟議牧場
 				</h1>
-				<p className="text-2xl font-bold text-foreground mb-6">
-					育てて、送り出して、見守る。
-				</p>
+				<p className="text-2xl font-bold text-foreground mb-6">育てて、送り出して、見守る。</p>
 				<p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
 					自分の代わりにAIが議論してくれる、
 					<br className="hidden sm:inline" />
@@ -166,9 +162,7 @@ export default function Home() {
 									<Card className="hover:shadow-lg transition">
 										<CardContent>
 											<div className="flex justify-between items-start mb-3">
-												<h3 className="font-bold text-lg flex-1">
-													{topic.title}
-												</h3>
+												<h3 className="font-bold text-lg flex-1">{topic.title}</h3>
 												<StatusBadge variant="active">進行中</StatusBadge>
 											</div>
 											<p className="text-muted-foreground text-sm line-clamp-3">

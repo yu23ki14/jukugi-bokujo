@@ -56,9 +56,7 @@ export async function checkAndCompleteTurn(
 			.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
 			.run();
 
-		console.log(
-			`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`,
-		);
+		console.log(`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`);
 	}
 
 	return true;

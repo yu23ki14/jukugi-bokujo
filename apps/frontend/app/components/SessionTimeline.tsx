@@ -103,13 +103,15 @@ function LatestTurnCard({
 				</div>
 				<div className="space-y-3">
 					{turn.statements && turn.statements.length > 0 ? (
-						[...turn.statements].reverse().map((statement) => (
-							<StatementBubble
-								key={statement.id}
-								statement={statement}
-								isMine={myAgentIds?.has(statement.agent_id) ?? false}
-							/>
-						))
+						[...turn.statements]
+							.reverse()
+							.map((statement) => (
+								<StatementBubble
+									key={statement.id}
+									statement={statement}
+									isMine={myAgentIds?.has(statement.agent_id) ?? false}
+								/>
+							))
 					) : (
 						<p className="text-sm text-muted-foreground">まだ発言がありません</p>
 					)}
@@ -204,14 +206,16 @@ function CollapsibleTurn({
 			{isExpanded && (
 				<div className="px-3 pb-3 space-y-2">
 					{turn.statements && turn.statements.length > 0 ? (
-						[...turn.statements].reverse().map((statement) => (
-							<StatementBubble
-								key={statement.id}
-								statement={statement}
-								isMine={myAgentIds?.has(statement.agent_id) ?? false}
-								compact
-							/>
-						))
+						[...turn.statements]
+							.reverse()
+							.map((statement) => (
+								<StatementBubble
+									key={statement.id}
+									statement={statement}
+									isMine={myAgentIds?.has(statement.agent_id) ?? false}
+									compact
+								/>
+							))
 					) : (
 						<p className="text-xs text-muted-foreground">発言なし</p>
 					)}

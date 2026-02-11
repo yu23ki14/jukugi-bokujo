@@ -275,7 +275,8 @@ export async function generateJudgeVerdict(
 	session: Session & { topic_title: string; topic_description: string },
 	allStatements: Array<Statement & { agent_name: string; turn_number: number }>,
 ): Promise<JudgeVerdict> {
-	const systemPrompt = "あなたは議論の良し悪しを判断する公平な審判です。熟議セッションの内容を評価し、判定を下します。";
+	const systemPrompt =
+		"あなたは議論の良し悪しを判断する公平な審判です。熟議セッションの内容を評価し、判定を下します。";
 
 	const formatAllStatements = (
 		statements: Array<Statement & { agent_name: string; turn_number: number }>,

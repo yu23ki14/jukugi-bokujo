@@ -109,9 +109,7 @@ async function enqueueTurn(env: Bindings, turn: Turn): Promise<void> {
 		attempt: 0,
 	});
 
-	console.log(
-		`Enqueued first agent (order ${firstParticipant.speakingOrder}) for turn ${turn.id}`,
-	);
+	console.log(`Enqueued first agent (order ${firstParticipant.speakingOrder}) for turn ${turn.id}`);
 }
 
 /**

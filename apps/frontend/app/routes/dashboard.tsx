@@ -43,10 +43,8 @@ function getTimeTheme(): {
 	cssVars?: React.CSSProperties;
 } {
 	const hour = new Date().getHours();
-	if (5 < hour && hour <= 11)
-		return { greeting: "おはようございます", bgClass: "bg-amber-50" };
-	if (11 < hour && hour <= 17)
-		return { greeting: "こんにちは", bgClass: "bg-sky-50" };
+	if (5 < hour && hour <= 11) return { greeting: "おはようございます", bgClass: "bg-amber-50" };
+	if (11 < hour && hour <= 17) return { greeting: "こんにちは", bgClass: "bg-sky-50" };
 	if (17 < hour && hour < 22)
 		return { greeting: "こんばんは", bgClass: "bg-orange-800", cssVars: darkCssVars };
 	return { greeting: "お疲れさまです", bgClass: "bg-indigo-950", cssVars: darkCssVars };

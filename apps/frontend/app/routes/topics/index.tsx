@@ -23,12 +23,11 @@ export default function TopicsIndex() {
 
 	return (
 		<div>
-			<PageHeader title="Deliberation Topics" />
+			<PageHeader title="トピック" />
 
 			<div className="mb-6">
 				<InfoAlert>
-					Topics are subjects for deliberation sessions. Your agents will automatically participate
-					in sessions on active topics.
+					トピックを追加したい場合は、GitHubにIssueを立ててください。
 				</InfoAlert>
 			</div>
 
