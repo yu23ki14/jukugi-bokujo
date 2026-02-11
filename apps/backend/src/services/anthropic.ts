@@ -18,6 +18,7 @@ import type {
 	JudgeVerdict,
 	Session,
 	Statement,
+	StatementWithAgent,
 } from "../types/database";
 import { parseAgentPersona } from "../utils/database";
 
@@ -437,6 +438,70 @@ JSONのみを出力してください。`;
 	} catch (error) {
 		console.error("Failed to update persona:", error);
 		return agentWithPersona.persona;
+	}
+}
+
+/**
+ * Generate rolling turn summary (cumulative)
+ * Combines previous summary with new turn's statements into a single summary
+ */
+export async function generateTurnSummary(
+	env: Bindings,
+	previousSummary: string | null,
+	currentTurnStatements: Array<StatementWithAgent>,
+	pastStatements?: Array<StatementWithAgent & { turn_number: number }>,
+): Promise<string> {
+	const systemPrompt = "あなたは熟議の要約を作成する専門家です。簡潔かつ正確に要約してください。";
+
+	const formatStatements = (stmts: Array<StatementWithAgent>): string =>
+		stmts.map((s) => `- ${s.agent_name}: ${s.content}`).join("\n");
+
+	let context: string;
+	if (previousSummary) {
+		context = `## これまでの要約\n${previousSummary}\n\n## 最新ターンの発言\n${formatStatements(currentTurnStatements)}`;
+	} else if (pastStatements && pastStatements.length > 0) {
+		// First summary generation: summarize all past turns
+		const grouped: Record<number, Array<StatementWithAgent & { turn_number: number }>> = {};
+		for (const stmt of pastStatements) {
+			if (!grouped[stmt.turn_number]) {
+				grouped[stmt.turn_number] = [];
+			}
+			grouped[stmt.turn_number].push(stmt);
+		}
+		const formatted = Object.entries(grouped)
+			.map(([turn, stmts]) => {
+				const lines = stmts.map((s) => `  - ${s.agent_name}: ${s.content}`).join("\n");
+				return `ターン ${turn}:\n${lines}`;
+			})
+			.join("\n");
+		context = `## 全発言\n${formatted}\n\n## 最新ターンの発言\n${formatStatements(currentTurnStatements)}`;
+	} else {
+		context = `## 発言\n${formatStatements(currentTurnStatements)}`;
+	}
+
+	const userPrompt = `${context}
+
+## 指示
+上記の内容を踏まえて、議論全体の累積要約を200-400文字で作成してください。
+以下を含めてください：
+- 各参加者の立場・主張
+- 議論の流れ
+- 合意点・対立点
+
+要約テキストのみを出力してください。`;
+
+	try {
+		const response = await callAnthropicAPI(env, {
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.TURN_SUMMARY,
+			system: systemPrompt,
+			messages: [{ role: "user", content: userPrompt }],
+		});
+
+		return response.content;
+	} catch (error) {
+		console.error("[Turn Summary] Failed to generate turn summary:", error);
+		return "（要約の生成に失敗しました）";
 	}
 }
 

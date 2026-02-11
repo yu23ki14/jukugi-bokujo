@@ -3,13 +3,15 @@
  * Checks if a turn is complete and handles session completion
  */
 
+import { SUMMARY_MIN_TURN } from "../config/constants";
 import {
 	generateJudgeVerdict,
 	generateSessionSummary,
+	generateTurnSummary,
 	updateAgentPersona,
 } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent, Feedback, Session, Statement } from "../types/database";
+import type { Agent, Feedback, Session, Statement, StatementWithAgent } from "../types/database";
 import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -35,6 +37,15 @@ export async function checkAndCompleteTurn(
 	await env.DB.prepare("UPDATE sessions SET current_turn = ?, updated_at = ? WHERE id = ?")
 		.bind(turnNumber, completedAt, sessionId)
 		.run();
+
+	// 2.5. Generate rolling summary for this turn (non-blocking)
+	if (turnNumber >= SUMMARY_MIN_TURN) {
+		try {
+			await generateAndSaveTurnSummary(env, turnId, sessionId, turnNumber);
+		} catch (error) {
+			console.error(`[Turn Completion] Failed to generate summary for turn ${turnNumber}:`, error);
+		}
+	}
 
 	// 3. Get session info to check max_turns
 	const session = await getSession(env.DB, sessionId);
@@ -80,6 +91,72 @@ async function getSession(
 		.first<Session & { topic_title: string; topic_description: string }>();
 
 	return result;
+}
+
+/**
+ * Generate a rolling summary for a completed turn and save it
+ */
+async function generateAndSaveTurnSummary(
+	env: Bindings,
+	turnId: string,
+	sessionId: string,
+	turnNumber: number,
+): Promise<void> {
+	// 1. Get the previous turn's cumulative summary (if any)
+	const previousTurn = await env.DB.prepare(
+		`SELECT summary FROM turns
+     WHERE session_id = ? AND turn_number = ? AND status = 'completed'`,
+	)
+		.bind(sessionId, turnNumber - 1)
+		.first<{ summary: string | null }>();
+
+	const previousSummary = previousTurn?.summary ?? null;
+
+	// 2. Get current turn's statements
+	const currentStatements = await env.DB.prepare(
+		`SELECT s.id, s.turn_id, s.agent_id, s.content, s.summary, s.thinking_process, s.created_at,
+            a.name as agent_name
+     FROM statements s
+     JOIN agents a ON s.agent_id = a.id
+     WHERE s.turn_id = ?
+     ORDER BY s.created_at ASC`,
+	)
+		.bind(turnId)
+		.all<StatementWithAgent>();
+
+	if (currentStatements.results.length === 0) {
+		return;
+	}
+
+	// 3. If first summary (no previous summary), also get all past statements
+	let pastStatements: Array<StatementWithAgent & { turn_number: number }> | undefined;
+	if (!previousSummary) {
+		const pastResult = await env.DB.prepare(
+			`SELECT s.id, s.turn_id, s.agent_id, s.content, s.summary, s.thinking_process, s.created_at,
+              a.name as agent_name, t.turn_number
+       FROM statements s
+       JOIN agents a ON s.agent_id = a.id
+       JOIN turns t ON s.turn_id = t.id
+       WHERE t.session_id = ? AND t.turn_number < ?
+       ORDER BY t.turn_number ASC, s.created_at ASC`,
+		)
+			.bind(sessionId, turnNumber)
+			.all<StatementWithAgent & { turn_number: number }>();
+		pastStatements = pastResult.results;
+	}
+
+	// 4. Generate summary
+	const summary = await generateTurnSummary(
+		env,
+		previousSummary,
+		currentStatements.results,
+		pastStatements,
+	);
+
+	// 5. Save to turns table
+	await env.DB.prepare("UPDATE turns SET summary = ? WHERE id = ?").bind(summary, turnId).run();
+
+	console.log(`[Turn Completion] Rolling summary saved for turn ${turnNumber}`);
 }
 
 /**

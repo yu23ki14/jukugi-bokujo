@@ -119,6 +119,7 @@ export interface Turn {
 	session_id: string;
 	turn_number: number;
 	status: TurnStatus;
+	summary: string | null;
 	started_at: number | null;
 	completed_at: number | null;
 	created_at: number;
@@ -133,6 +134,7 @@ export interface Statement {
 	turn_id: string;
 	agent_id: string;
 	content: string;
+	summary: string | null;
 	thinking_process: string | null;
 	created_at: number;
 }

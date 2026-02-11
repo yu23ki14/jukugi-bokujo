@@ -69,7 +69,7 @@ ${config.roleFraming}
 
 ${config.instruction}
 
-文字数目安: ${config.charMin}-${config.charMax}文字`;
+厳格な文字数: ${config.charMin}-${config.charMax}文字`;
 	},
 
 	getUserPromptSuffix(): string {

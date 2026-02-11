@@ -94,6 +94,11 @@ export const LLM_TOKEN_LIMITS = {
 	 * Maximum tokens for session strategy generation from feedback
 	 */
 	STRATEGY_GENERATION: 2000,
+
+	/**
+	 * Maximum tokens for rolling turn summary generation
+	 */
+	TURN_SUMMARY: 1000,
 } as const;
 
 // ============================================================================
@@ -129,6 +134,16 @@ export const KNOWLEDGE_CONTENT_MAX_LENGTH = 500;
  * Maximum number of previous statements to fetch for context
  */
 export const PREVIOUS_STATEMENTS_LIMIT = 50;
+
+/**
+ * Minimum turn number to apply context compression (turns below this use full text)
+ */
+export const COMPRESSION_MIN_TURN = 4;
+
+/**
+ * Minimum turn number to start generating rolling summaries
+ */
+export const SUMMARY_MIN_TURN = 0;
 
 // ============================================================================
 // Queue Configuration

@@ -26,9 +26,7 @@ export default function TopicsIndex() {
 			<PageHeader title="トピック" />
 
 			<div className="mb-6">
-				<InfoAlert>
-					トピックを追加したい場合は、GitHubにIssueを立ててください。
-				</InfoAlert>
+				<InfoAlert>トピックを追加したい場合は、GitHubにIssueを立ててください。</InfoAlert>
 			</div>
 
 			{loading && <LoadingState message="Loading topics..." />}
