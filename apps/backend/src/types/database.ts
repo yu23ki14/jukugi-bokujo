@@ -24,11 +24,14 @@ export interface AgentPersona {
 	version: number;
 }
 
+export type AgentStatus = "active" | "reserve";
+
 export interface Agent {
 	id: string;
 	user_id: string;
 	name: string;
 	persona: string; // JSON string of AgentPersona
+	status: AgentStatus;
 	created_at: number;
 	updated_at: number;
 }

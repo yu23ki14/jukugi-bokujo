@@ -67,15 +67,27 @@ export async function checkAndCompleteTurn(
 		console.log(`[Session Completion] Session ${sessionId} reached max turns, completing...`);
 		await completeSession(env, session);
 	} else {
-		// 5. Create next turn
-		const nextTurnId = generateUUID();
-		await env.DB.prepare(
-			"INSERT INTO turns (id, session_id, turn_number, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
+		// 5. Create next turn (if not already created by a parallel execution)
+		const existingNextTurn = await env.DB.prepare(
+			"SELECT id FROM turns WHERE session_id = ? AND turn_number = ?",
 		)
-			.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
-			.run();
+			.bind(sessionId, turnNumber + 1)
+			.first<{ id: string }>();
 
-		console.log(`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`);
+		if (existingNextTurn) {
+			console.log(
+				`[Turn Completion] Next turn ${turnNumber + 1} already exists for session ${sessionId}, skipping creation`,
+			);
+		} else {
+			const nextTurnId = generateUUID();
+			await env.DB.prepare(
+				"INSERT INTO turns (id, session_id, turn_number, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
+			)
+				.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
+				.run();
+
+			console.log(`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`);
+		}
 	}
 
 	return true;

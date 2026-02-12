@@ -21,10 +21,22 @@ export async function runTurnCron(env: Bindings): Promise<void> {
 		// 2. Get pending turns
 		const pendingTurns = await getPendingTurns(env.DB);
 
-		const turnsToProcess = [...processingTurns, ...pendingTurns];
+		// 3. Deduplicate: skip pending turns whose session already has a processing turn
+		const processingSessions = new Set(processingTurns.map((t) => t.session_id));
+		const filteredPendingTurns = pendingTurns.filter((t) => {
+			if (processingSessions.has(t.session_id)) {
+				console.log(
+					`Skipping pending turn ${t.id} (session ${t.session_id} already has a processing turn)`,
+				);
+				return false;
+			}
+			return true;
+		});
+
+		const turnsToProcess = [...processingTurns, ...filteredPendingTurns];
 		console.log(`Found ${turnsToProcess.length} turns to enqueue`);
 
-		// 3. Enqueue all turns to Queue for parallel processing
+		// 4. Enqueue all turns to Queue for parallel processing
 		for (const turn of turnsToProcess) {
 			try {
 				await enqueueTurn(env, turn);

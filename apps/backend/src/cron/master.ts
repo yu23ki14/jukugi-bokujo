@@ -120,13 +120,14 @@ async function getAllActiveAgents(db: D1Database): Promise<Agent[]> {
 
 	const result = await db
 		.prepare(
-			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at
+			`SELECT DISTINCT a.id, a.user_id, a.name, a.persona, a.status, a.created_at, a.updated_at
        FROM agents a
        LEFT JOIN feedbacks f ON a.id = f.agent_id
        LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
-       WHERE f.created_at >= ?
+       WHERE a.status = 'active'
+         AND (f.created_at >= ?
           OR ke.created_at >= ?
-          OR a.created_at >= ?
+          OR a.created_at >= ?)
        GROUP BY a.id`,
 		)
 		.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp)

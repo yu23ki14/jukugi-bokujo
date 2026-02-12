@@ -5,6 +5,14 @@
 import { z } from "@hono/zod-openapi";
 
 /**
+ * Agent status enum schema
+ */
+export const AgentStatusSchema = z.enum(["active", "reserve"]).openapi({
+	description: "Agent status (active = participates in deliberations, reserve = training only)",
+	example: "active",
+});
+
+/**
  * Agent persona schema
  */
 export const AgentPersonaSchema = z
@@ -62,6 +70,7 @@ export const CreateAgentResponseSchema = z
 			example: "My First Agent",
 		}),
 		persona: AgentPersonaSchema,
+		status: AgentStatusSchema,
 		created_at: z.number().int().openapi({
 			description: "Unix timestamp (seconds) when created",
 			example: 1704067200,
@@ -83,6 +92,7 @@ export const AgentSummarySchema = z
 			example: "My First Agent",
 		}),
 		persona: AgentPersonaSchema,
+		status: AgentStatusSchema,
 		active_session_count: z.number().int().openapi({
 			description: "Number of active sessions this agent is currently participating in",
 			example: 1,
@@ -123,6 +133,7 @@ export const GetAgentResponseSchema = z
 			example: "My First Agent",
 		}),
 		persona: AgentPersonaSchema,
+		status: AgentStatusSchema,
 		created_at: z.number().int().openapi({
 			description: "Unix timestamp (seconds) when created",
 			example: 1704067200,
@@ -170,3 +181,29 @@ export const UpdateAgentResponseSchema = z
 		}),
 	})
 	.openapi("UpdateAgentResponse");
+
+/**
+ * Update agent status request schema
+ */
+export const UpdateAgentStatusRequestSchema = z
+	.object({
+		status: AgentStatusSchema,
+	})
+	.openapi("UpdateAgentStatusRequest");
+
+/**
+ * Update agent status response schema
+ */
+export const UpdateAgentStatusResponseSchema = z
+	.object({
+		id: z.string().uuid().openapi({
+			description: "Agent ID",
+			example: "123e4567-e89b-12d3-a456-426614174000",
+		}),
+		status: AgentStatusSchema,
+		updated_at: z.number().int().openapi({
+			description: "Unix timestamp (seconds) when last updated",
+			example: 1704067200,
+		}),
+	})
+	.openapi("UpdateAgentStatusResponse");

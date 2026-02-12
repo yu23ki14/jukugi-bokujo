@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { FormField, InfoAlert, PageHeader, StatusBadge } from "../../components/design-system";
+import { BackLink, FormField, InfoAlert, StatusBadge } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -14,7 +14,7 @@ import {
 type Phase = "form" | "generating" | "reveal";
 
 export function meta() {
-	return [{ title: "Create Agent - Jukugi Bokujo" }];
+	return [{ title: "なかまを迎える - 熟議牧場" }];
 }
 
 export default function NewAgent() {
@@ -79,7 +79,7 @@ export default function NewAgent() {
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!name.trim()) {
-			setError("エージェント名を入力してください");
+			setError("なかまの名前を入力してください");
 			return;
 		}
 		try {
@@ -99,12 +99,33 @@ export default function NewAgent() {
 	if (phase === "generating") {
 		return (
 			<ProtectedRoute>
+				<style>
+					{`@keyframes egg-wobble {
+						0%, 100% { transform: rotate(0deg); }
+						25% { transform: rotate(-8deg); }
+						75% { transform: rotate(8deg); }
+					}`}
+				</style>
 				<div className="flex items-center justify-center min-h-[60vh]">
 					<Card className="w-full max-w-md">
 						<CardContent className="text-center py-16">
-							<p className="text-5xl mb-6 animate-bounce">🥚</p>
+							<p
+								className="text-6xl mb-6"
+								style={{ animation: "egg-wobble 0.5s ease-in-out infinite" }}
+							>
+								🥚
+							</p>
 							<p className="text-xl font-bold mb-2">ペルソナ生成中...</p>
 							<p className="text-muted-foreground">AIが「{name}」の性格を考えています</p>
+							<div className="flex justify-center gap-1 mt-4">
+								{[0, 1, 2].map((i) => (
+									<div
+										key={i}
+										className="w-2 h-2 rounded-full bg-primary animate-bounce"
+										style={{ animationDelay: `${i * 0.15}s` }}
+									/>
+								))}
+							</div>
 						</CardContent>
 					</Card>
 				</div>
@@ -121,18 +142,42 @@ export default function NewAgent() {
 						0% { transform: scale(0.3); opacity: 0; }
 						50% { transform: scale(1.05); }
 						100% { transform: scale(1); opacity: 1; }
+					}
+					@keyframes sparkle {
+						0%, 100% { opacity: 0; transform: scale(0.5); }
+						50% { opacity: 1; transform: scale(1); }
 					}`}
 				</style>
 				<div className="flex items-center justify-center min-h-[60vh]">
 					<Card className="w-full max-w-md" style={{ animation: "hatch 0.6s ease-out" }}>
 						<CardContent className="py-10">
-							<div className="text-center mb-6">
-								<p className="text-5xl mb-4">🐄</p>
-								<p className="text-2xl font-bold">{createdAgent.name}</p>
-								<p className="text-lg text-muted-foreground">が誕生しました！</p>
+							<div className="text-center mb-6 relative">
+								<div className="absolute -top-2 left-1/4">
+									<span
+										className="text-lg"
+										style={{ animation: "sparkle 1s ease-in-out infinite" }}
+									>
+										✨
+									</span>
+								</div>
+								<div className="absolute -top-2 right-1/4">
+									<span
+										className="text-lg"
+										style={{
+											animation: "sparkle 1s ease-in-out infinite 0.3s",
+										}}
+									>
+										✨
+									</span>
+								</div>
+								<p className="text-6xl mb-4">🐄</p>
+								<p className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+									{createdAgent.name}
+								</p>
+								<p className="text-lg text-muted-foreground">が牧場にやってきた!</p>
 							</div>
 
-							<div className="space-y-3 text-left">
+							<div className="space-y-3 text-left bg-muted/50 rounded-lg p-4">
 								{persona.thinking_style && (
 									<div>
 										<p className="text-xs font-semibold text-muted-foreground mb-1">思考スタイル</p>
@@ -166,7 +211,7 @@ export default function NewAgent() {
 							</div>
 
 							<p className="text-center text-sm text-muted-foreground mt-6">
-								これから知識と方向性を与えて育てていきましょう！
+								知識と方向性を与えて育てていこう!
 							</p>
 						</CardContent>
 					</Card>
@@ -178,28 +223,33 @@ export default function NewAgent() {
 	return (
 		<ProtectedRoute>
 			<div className="max-w-2xl mx-auto">
-				<PageHeader title="Create New Agent" />
+				<BackLink to="/agents" label="牧場に戻る" />
 
-				<Card className="mb-6">
-					<CardContent className="py-4">
-						<p className="text-sm text-muted-foreground">
-							名前を決めると、AIが独自のペルソナを生成します。どんな性格のエージェントが生まれるかはお楽しみ！
-						</p>
-					</CardContent>
-				</Card>
+				{/* Header */}
+				<div className="text-center mb-8">
+					<p className="text-5xl mb-3">🥚</p>
+					<h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+						新しいなかまを迎える
+					</h1>
+					<p className="text-muted-foreground">
+						名前を決めると、AIが独自のペルソナを生成します
+						<br />
+						どんな性格のなかまが来るかはお楽しみ!
+					</p>
+				</div>
 
 				<Card>
 					<CardContent>
 						<form onSubmit={handleSubmit}>
 							<FormField
-								label="Agent Name"
+								label="なまえ"
 								name="name"
 								value={name}
 								onChange={(v) => setName(v)}
-								placeholder="e.g., Thoughtful Citizen, Climate Advocate, Tech Enthusiast"
-								maxLength={100}
+								placeholder="例: 環境活動家タロウ、テクノロジー推進派..."
+								maxLength={20}
 								disabled={createAgentMutation.isPending}
-								helperText="名前がエージェントの性格に影響します"
+								helperText="名前がなかまの性格に影響します"
 							/>
 
 							{error && (
@@ -213,8 +263,9 @@ export default function NewAgent() {
 									type="submit"
 									size="lg"
 									disabled={createAgentMutation.isPending || !name.trim()}
+									className="flex-1"
 								>
-									エージェントを生み出す
+									なかまを生み出す
 								</Button>
 								<Button
 									type="button"
@@ -223,7 +274,7 @@ export default function NewAgent() {
 									onClick={() => navigate("/agents")}
 									disabled={createAgentMutation.isPending}
 								>
-									Cancel
+									やめる
 								</Button>
 							</div>
 						</form>

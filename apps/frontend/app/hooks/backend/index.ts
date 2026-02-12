@@ -113,6 +113,16 @@ export interface AgentPersona {
   version: number;
 }
 
+/**
+ * Agent status (active | reserve)
+ */
+export type AgentStatusType = typeof AgentStatusType[keyof typeof AgentStatusType];
+
+export const AgentStatusType = {
+  active: 'active',
+  reserve: 'reserve',
+} as const;
+
 export interface CreateAgentResponse {
   /** Agent ID */
   id: string;
@@ -121,6 +131,8 @@ export interface CreateAgentResponse {
   /** Agent name */
   name: string;
   persona: AgentPersona;
+  /** Agent status (active = participates in deliberations, reserve = training only) */
+  status: AgentStatusType;
   /** Unix timestamp (seconds) when created */
   created_at: number;
 }
@@ -140,6 +152,8 @@ export interface AgentSummary {
   /** Agent name */
   name: string;
   persona: AgentPersona;
+  /** Agent status (active = participates in deliberations, reserve = training only) */
+  status: AgentStatusType;
   /** Number of active sessions this agent is currently participating in */
   active_session_count: number;
   /** Unix timestamp (seconds) when created */
@@ -159,6 +173,8 @@ export interface GetAgentResponse {
   /** Agent name */
   name: string;
   persona: AgentPersona;
+  /** Agent status (active = participates in deliberations, reserve = training only) */
+  status: AgentStatusType;
   /** Unix timestamp (seconds) when created */
   created_at: number;
   /** Unix timestamp (seconds) when last updated */
@@ -1414,6 +1430,138 @@ export const usePatchApiAgentsId = <TError = ErrorType<ErrorResponse>,
       return useMutation(getPatchApiAgentsIdMutationOptions(options), queryClient);
     }
     
+export interface UpdateAgentStatusRequest {
+  /** Agent status (active = participates in deliberations, reserve = training only) */
+  status: AgentStatusType;
+}
+
+export interface UpdateAgentStatusResponse {
+  /** Agent ID */
+  id: string;
+  /** Agent status (active = participates in deliberations, reserve = training only) */
+  status: AgentStatusType;
+  /** Unix timestamp (seconds) when last updated */
+  updated_at: number;
+}
+
+/**
+ * Change agent status between active and reserve
+ * @summary Update agent status
+ */
+export type patchApiAgentsIdStatusResponse200 = {
+  data: UpdateAgentStatusResponse
+  status: 200
+}
+
+export type patchApiAgentsIdStatusResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type patchApiAgentsIdStatusResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type patchApiAgentsIdStatusResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type patchApiAgentsIdStatusResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type patchApiAgentsIdStatusResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type patchApiAgentsIdStatusResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type patchApiAgentsIdStatusResponseSuccess = (patchApiAgentsIdStatusResponse200) & {
+  headers: Headers;
+};
+export type patchApiAgentsIdStatusResponseError = (patchApiAgentsIdStatusResponse400 | patchApiAgentsIdStatusResponse401 | patchApiAgentsIdStatusResponse403 | patchApiAgentsIdStatusResponse404 | patchApiAgentsIdStatusResponse409 | patchApiAgentsIdStatusResponse500) & {
+  headers: Headers;
+};
+
+export type patchApiAgentsIdStatusResponse = (patchApiAgentsIdStatusResponseSuccess | patchApiAgentsIdStatusResponseError)
+
+export const getPatchApiAgentsIdStatusUrl = (id: string,) => {
+
+
+
+
+
+  return `/api/agents/${id}/status`
+}
+
+export const patchApiAgentsIdStatus = async (id: string,
+    updateAgentStatusRequest: UpdateAgentStatusRequest, options?: RequestInit): Promise<patchApiAgentsIdStatusResponse> => {
+
+  return customBackendClient<patchApiAgentsIdStatusResponse>(getPatchApiAgentsIdStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateAgentStatusRequest,)
+  }
+);}
+
+
+
+
+export const getPatchApiAgentsIdStatusMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiAgentsIdStatus>>, TError,{id: string;data: UpdateAgentStatusRequest}, TContext>, request?: SecondParameter<typeof customBackendClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchApiAgentsIdStatus>>, TError,{id: string;data: UpdateAgentStatusRequest}, TContext> => {
+
+const mutationKey = ['patchApiAgentsIdStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchApiAgentsIdStatus>>, {id: string;data: UpdateAgentStatusRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchApiAgentsIdStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchApiAgentsIdStatusMutationResult = NonNullable<Awaited<ReturnType<typeof patchApiAgentsIdStatus>>>
+    export type PatchApiAgentsIdStatusMutationBody = UpdateAgentStatusRequest
+    export type PatchApiAgentsIdStatusMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update agent status
+ */
+export const usePatchApiAgentsIdStatus = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchApiAgentsIdStatus>>, TError,{id: string;data: UpdateAgentStatusRequest}, TContext>, request?: SecondParameter<typeof customBackendClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchApiAgentsIdStatus>>,
+        TError,
+        {id: string;data: UpdateAgentStatusRequest},
+        TContext
+      > => {
+      return useMutation(getPatchApiAgentsIdStatusMutationOptions(options), queryClient);
+    }
+
 /**
  * Delete an agent and all related data (knowledge, inputs, etc.)
  * @summary Delete agent

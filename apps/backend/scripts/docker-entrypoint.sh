@@ -14,6 +14,7 @@ pnpm wrangler d1 execute jukugi-bokujo-db --local --file=./migrations/0001_initi
 pnpm wrangler d1 execute jukugi-bokujo-db --local --file=./migrations/0002_refactor_inputs.sql 2>&1 | grep -v "already exists" || true
 pnpm wrangler d1 execute jukugi-bokujo-db --local --file=./migrations/0003_add_session_mode.sql 2>&1 | grep -v "already exists" || true
 pnpm wrangler d1 execute jukugi-bokujo-db --local --file=./migrations/0004_context_compression.sql 2>&1 | grep -v "already exists" || true
+pnpm wrangler d1 execute jukugi-bokujo-db --local --file=./migrations/0005_agent_status.sql 2>&1 | grep -v "already exists" || true
 
 echo "✅ Migrations completed!"
 echo "🔥 Starting Wrangler dev server..."

@@ -3,7 +3,7 @@
  */
 
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { MAX_AGENTS_PER_USER } from "../config/constants";
+import { MAX_ACTIVE_AGENTS_PER_USER, MAX_AGENTS_PER_USER } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import {
 	CreateAgentRequestSchema,
@@ -12,11 +12,13 @@ import {
 	ListAgentsResponseSchema,
 	UpdateAgentRequestSchema,
 	UpdateAgentResponseSchema,
+	UpdateAgentStatusRequestSchema,
+	UpdateAgentStatusResponseSchema,
 } from "../schemas/agents";
 import { ErrorResponseSchema, SuccessResponseSchema } from "../schemas/common";
 import { generateInitialPersona } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent } from "../types/database";
+import type { Agent, AgentStatus } from "../types/database";
 import { getOrCreateUser, parseAgentPersona, stringifyAgentPersona } from "../utils/database";
 import { conflict, forbidden, handleDatabaseError, notFound } from "../utils/errors";
 import { getCurrentTimestamp } from "../utils/timestamp";
@@ -112,6 +114,15 @@ agents.openapi(createAgentRoute, async (c) => {
 			return conflict(c, `エージェントは最大${MAX_AGENTS_PER_USER}体までです`);
 		}
 
+		// Determine status: active if slots available, otherwise reserve
+		const activeCountResult = await c.env.DB.prepare(
+			"SELECT COUNT(*) as count FROM agents WHERE user_id = ? AND status = 'active'",
+		)
+			.bind(userId)
+			.first<{ count: number }>();
+		const activeCount = activeCountResult?.count ?? 0;
+		const status: AgentStatus = activeCount < MAX_ACTIVE_AGENTS_PER_USER ? "active" : "reserve";
+
 		// Generate initial persona using LLM
 		const persona = await generateInitialPersona(c.env, body.name.trim());
 
@@ -120,10 +131,10 @@ agents.openapi(createAgentRoute, async (c) => {
 		const now = getCurrentTimestamp();
 
 		await c.env.DB.prepare(
-			`INSERT INTO agents (id, user_id, name, persona, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO agents (id, user_id, name, persona, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		)
-			.bind(agentId, userId, body.name.trim(), stringifyAgentPersona(persona), now, now)
+			.bind(agentId, userId, body.name.trim(), stringifyAgentPersona(persona), status, now, now)
 			.run();
 
 		return c.json(
@@ -132,6 +143,7 @@ agents.openapi(createAgentRoute, async (c) => {
 				user_id: userId,
 				name: body.name.trim(),
 				persona,
+				status,
 				created_at: now,
 			},
 			201,
@@ -186,7 +198,7 @@ agents.openapi(listAgentsRoute, async (c) => {
 
 	try {
 		const result = await c.env.DB.prepare(
-			`SELECT a.id, a.user_id, a.name, a.persona, a.created_at, a.updated_at,
+			`SELECT a.id, a.user_id, a.name, a.persona, a.status, a.created_at, a.updated_at,
         COALESCE(asc_count.active_count, 0) as active_session_count
        FROM agents a
        LEFT JOIN (
@@ -208,6 +220,7 @@ agents.openapi(listAgentsRoute, async (c) => {
 				id: parsed.id,
 				name: parsed.name,
 				persona: parsed.persona,
+				status: agent.status,
 				active_session_count: agent.active_session_count,
 				created_at: parsed.created_at,
 			};
@@ -297,7 +310,7 @@ agents.openapi(getAgentRoute, async (c) => {
 
 	try {
 		const agent = await c.env.DB.prepare(
-			`SELECT id, user_id, name, persona, created_at, updated_at
+			`SELECT id, user_id, name, persona, status, created_at, updated_at
        FROM agents
        WHERE id = ?`,
 		)
@@ -320,6 +333,7 @@ agents.openapi(getAgentRoute, async (c) => {
 			user_id: parsed.user_id,
 			name: parsed.name,
 			persona: parsed.persona,
+			status: agent.status,
 			created_at: parsed.created_at,
 			updated_at: parsed.updated_at,
 		});
@@ -451,6 +465,162 @@ agents.openapi(updateAgentRoute, async (c) => {
 			persona: parsed.persona,
 			updated_at: now,
 		});
+	} catch (error) {
+		return handleDatabaseError(c, error);
+	}
+});
+
+// ============================================================================
+// PATCH /api/agents/:id/status - Update agent status
+// ============================================================================
+
+const updateAgentStatusRoute = createRoute({
+	method: "patch",
+	path: "/{id}/status",
+	tags: ["Agents"],
+	summary: "Update agent status",
+	description:
+		"Change agent status between active (participates in deliberations) and reserve (training only)",
+	security: [{ bearerAuth: [] }],
+	request: {
+		params: z.object({
+			id: z
+				.string()
+				.uuid()
+				.openapi({
+					param: {
+						name: "id",
+						in: "path",
+					},
+					description: "Agent ID",
+					example: "123e4567-e89b-12d3-a456-426614174000",
+				}),
+		}),
+		body: {
+			content: {
+				"application/json": {
+					schema: UpdateAgentStatusRequestSchema,
+				},
+			},
+		},
+	},
+	responses: {
+		200: {
+			description: "Agent status updated successfully",
+			content: {
+				"application/json": {
+					schema: UpdateAgentStatusResponseSchema,
+				},
+			},
+		},
+		400: {
+			description: "Validation error",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+		401: {
+			description: "Unauthorized",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+		403: {
+			description: "Forbidden - Agent belongs to another user",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+		404: {
+			description: "Agent not found",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+		409: {
+			description: "Conflict - Cannot change status due to constraints",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+		500: {
+			description: "Internal server error",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
+	},
+});
+
+agents.openapi(updateAgentStatusRoute, async (c) => {
+	const userId = getAuthUserId(c);
+	const agentId = c.req.param("id");
+	const body = c.req.valid("json");
+
+	try {
+		const agent = await c.env.DB.prepare("SELECT id, user_id, status FROM agents WHERE id = ?")
+			.bind(agentId)
+			.first<{ id: string; user_id: string; status: AgentStatus }>();
+
+		if (!agent) {
+			return notFound(c, "Agent");
+		}
+
+		if (agent.user_id !== userId) {
+			return forbidden(c, "You do not have access to this agent");
+		}
+
+		if (agent.status === body.status) {
+			const now = getCurrentTimestamp();
+			return c.json({ id: agent.id, status: agent.status, updated_at: now });
+		}
+
+		if (body.status === "active") {
+			// Check active slot availability
+			const activeCountResult = await c.env.DB.prepare(
+				"SELECT COUNT(*) as count FROM agents WHERE user_id = ? AND status = 'active'",
+			)
+				.bind(userId)
+				.first<{ count: number }>();
+			const activeCount = activeCountResult?.count ?? 0;
+			if (activeCount >= MAX_ACTIVE_AGENTS_PER_USER) {
+				return conflict(
+					c,
+					`アクティブスロットに空きがありません（最大${MAX_ACTIVE_AGENTS_PER_USER}体）`,
+				);
+			}
+		} else {
+			// Check if agent is in an active/pending session
+			const sessionResult = await c.env.DB.prepare(
+				`SELECT COUNT(*) as count FROM session_participants sp
+         JOIN sessions s ON sp.session_id = s.id
+         WHERE sp.agent_id = ? AND s.status IN ('pending', 'active')`,
+			)
+				.bind(agentId)
+				.first<{ count: number }>();
+			if (sessionResult && sessionResult.count > 0) {
+				return conflict(c, "セッション参加中のエージェントはリザーブに移動できません");
+			}
+		}
+
+		const now = getCurrentTimestamp();
+		await c.env.DB.prepare("UPDATE agents SET status = ?, updated_at = ? WHERE id = ?")
+			.bind(body.status, now, agentId)
+			.run();
+
+		return c.json({ id: agent.id, status: body.status, updated_at: now });
 	} catch (error) {
 		return handleDatabaseError(c, error);
 	}

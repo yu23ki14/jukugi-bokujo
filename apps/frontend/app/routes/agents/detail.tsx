@@ -19,7 +19,7 @@ import {
 import { formatDateTime } from "../../utils/date";
 
 export function meta() {
-	return [{ title: "Agent Detail - Jukugi Bokujo" }];
+	return [{ title: "なかま詳細 - 熟議牧場" }];
 }
 
 export default function AgentDetail() {
@@ -76,7 +76,7 @@ export default function AgentDetail() {
 	return (
 		<ProtectedRoute>
 			<div className="max-w-2xl mx-auto">
-				{loading && <LoadingState message="Loading agent..." />}
+				{loading && <LoadingState message="読み込み中..." />}
 
 				{error && (
 					<InfoAlert variant="error">
@@ -86,17 +86,21 @@ export default function AgentDetail() {
 
 				{!loading && !error && agent && (
 					<div>
-						<BackLink to="/agents" label="My Agents" />
+						<BackLink to="/agents" label="牧場に戻る" />
 
-						{/* Agent Header */}
-						<div className="text-center mb-6">
-							<p className="text-5xl mb-3">🐄</p>
-							<h1 className="text-3xl font-bold mb-1">{agent.name}</h1>
-							<Badge variant="secondary">v{agent.persona.version}</Badge>
+						{/* Agent Profile Header */}
+						<div className="text-center mb-8">
+							<p className="text-6xl mb-3">🐄</p>
+							<h1 className="text-3xl font-bold mb-1 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+								{agent.name}
+							</h1>
+							<Badge variant="secondary" className="text-sm">
+								Lv.{agent.persona.version}
+							</Badge>
 						</div>
 
-						{/* Persona Profile */}
-						<Card className="mb-6">
+						{/* Persona Status Card */}
+						<Card className="mb-6 overflow-hidden">
 							<CardContent className="space-y-4">
 								<div>
 									<p className="text-xs font-semibold text-muted-foreground mb-1">思考スタイル</p>
@@ -132,20 +136,27 @@ export default function AgentDetail() {
 							</CardContent>
 						</Card>
 
-						{/* Actions */}
-						<div className="flex gap-3 mb-6">
-							<Button asChild className="flex-1">
-								<Link to={`/agents/${id}/knowledge`}>ナレッジを管理</Link>
-							</Button>
-							<Button variant="outline" asChild className="flex-1">
-								<Link to={`/sessions?agent=${id}`}>セッション履歴</Link>
-							</Button>
+						{/* Action Buttons */}
+						<div className="grid grid-cols-2 gap-3 mb-6">
+							<ActionCard
+								emoji="📚"
+								label="ナレッジ管理"
+								description="知識を与えて育てる"
+								to={`/agents/${id}/knowledge`}
+							/>
+							<ActionCard
+								emoji="📜"
+								label="セッション履歴"
+								description="過去の議論を振り返る"
+								to={`/sessions?agent=${id}`}
+							/>
 						</div>
 
 						{/* Footer */}
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
+						<div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t">
 							<span>
-								作成: {formatDateTime(agent.created_at)} / 更新: {formatDateTime(agent.updated_at)}
+								牧場入り: {formatDateTime(agent.created_at)} / 最終更新:{" "}
+								{formatDateTime(agent.updated_at)}
 							</span>
 							<ConfirmDialog
 								trigger={
@@ -155,13 +166,13 @@ export default function AgentDetail() {
 										className="text-destructive hover:text-destructive"
 										disabled={deleteAgentMutation.isPending}
 									>
-										{deleteAgentMutation.isPending ? "削除中..." : "エージェントを削除"}
+										{deleteAgentMutation.isPending ? "お別れ中..." : "お別れする"}
 									</Button>
 								}
-								title="エージェントを削除"
-								description={`「${agent.name}」を削除しますか？この操作は取り消せません。`}
-								confirmLabel="削除"
-								cancelLabel="キャンセル"
+								title="このなかまとお別れしますか？"
+								description={`「${agent.name}」を牧場から送り出します。この操作は取り消せません。`}
+								confirmLabel="お別れする"
+								cancelLabel="やめる"
 								onConfirm={handleDelete}
 								variant="destructive"
 							/>
@@ -170,5 +181,29 @@ export default function AgentDetail() {
 				)}
 			</div>
 		</ProtectedRoute>
+	);
+}
+
+function ActionCard({
+	emoji,
+	label,
+	description,
+	to,
+}: {
+	emoji: string;
+	label: string;
+	description: string;
+	to: string;
+}) {
+	return (
+		<Link to={to}>
+			<Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer h-full">
+				<CardContent className="py-5 text-center">
+					<p className="text-2xl mb-2">{emoji}</p>
+					<p className="font-bold text-sm">{label}</p>
+					<p className="text-xs text-muted-foreground mt-1">{description}</p>
+				</CardContent>
+			</Card>
+		</Link>
 	);
 }

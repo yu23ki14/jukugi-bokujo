@@ -22,7 +22,7 @@ import { formatDateTime } from "../../utils/date";
 const MAX_SLOTS = 10;
 
 export function meta() {
-	return [{ title: "Agent Knowledge - Jukugi Bokujo" }];
+	return [{ title: "知識倉庫 - 熟議牧場" }];
 }
 
 export default function AgentKnowledge() {
@@ -97,7 +97,7 @@ export default function AgentKnowledge() {
 	return (
 		<ProtectedRoute>
 			<div className="max-w-2xl mx-auto">
-				{loading && <LoadingState message="ナレッジを読み込み中..." />}
+				{loading && <LoadingState message="知識倉庫を読み込み中..." />}
 
 				{error && (
 					<InfoAlert variant="error">
@@ -110,33 +110,41 @@ export default function AgentKnowledge() {
 						<BackLink to={`/agents/${id}`} label={agent.name} />
 
 						{/* Header */}
-						<div className="text-center mb-6">
+						<div className="text-center mb-8">
 							<p className="text-5xl mb-3">📚</p>
-							<h1 className="text-2xl font-bold mb-1">ナレッジベース</h1>
+							<h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+								知識倉庫
+							</h1>
 							<p className="text-muted-foreground">{agent.name} に知識を与えて議論力を高めよう</p>
 						</div>
 
-						{/* Slot Indicator */}
-						<Card className="mb-6">
-							<CardContent className="py-4">
-								<div className="flex items-center justify-between mb-2">
-									<p className="text-sm font-semibold">スロット使用状況</p>
-									<p className="text-sm text-muted-foreground">
+						{/* Slot Gauge */}
+						<Card className="mb-6 overflow-hidden">
+							<div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-6 py-3 border-b">
+								<div className="flex items-center justify-between">
+									<p className="text-sm font-bold tracking-wider text-blue-700 dark:text-blue-400">
+										倉庫容量
+									</p>
+									<p className="text-sm font-bold text-blue-700 dark:text-blue-400">
 										{knowledge.length} / {MAX_SLOTS}
 									</p>
 								</div>
+							</div>
+							<CardContent className="py-4">
 								<div className="flex gap-1.5">
 									{Array.from({ length: MAX_SLOTS }).map((_, i) => (
 										<div
 											key={`slot-${i}`}
-											className={`h-2 flex-1 rounded-full ${
-												i < knowledge.length ? "bg-primary" : "bg-muted"
+											className={`h-3 flex-1 rounded-full transition-colors ${
+												i < knowledge.length
+													? "bg-gradient-to-r from-blue-500 to-cyan-500"
+													: "bg-muted"
 											}`}
 										/>
 									))}
 								</div>
-								<p className="text-xs text-muted-foreground mt-2">
-									タイトル30文字、内容500文字まで。ナレッジはエージェントの議論に反映されます。
+								<p className="text-xs text-muted-foreground mt-3">
+									タイトル30文字、内容500文字まで。ナレッジは議論の質に影響します。
 								</p>
 							</CardContent>
 						</Card>
@@ -145,16 +153,20 @@ export default function AgentKnowledge() {
 						{knowledge.length < MAX_SLOTS && !showForm && (
 							<div className="mb-6">
 								<Button className="w-full" size="lg" onClick={() => setShowForm(true)}>
-									ナレッジを追加する
+									知識を追加する
 								</Button>
 							</div>
 						)}
 
 						{/* Add Form */}
 						{showForm && (
-							<Card className="mb-6">
-								<CardContent>
-									<p className="font-semibold mb-4">新しいナレッジ</p>
+							<Card className="mb-6 overflow-hidden">
+								<div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-6 py-3 border-b">
+									<p className="text-sm font-bold tracking-wider text-blue-700 dark:text-blue-400">
+										新しい知識
+									</p>
+								</div>
+								<CardContent className="pt-4">
 									<form onSubmit={handleSubmit}>
 										<FormField
 											label="タイトル"
@@ -173,7 +185,7 @@ export default function AgentKnowledge() {
 											type="textarea"
 											value={content}
 											onChange={(v) => setContent(v)}
-											placeholder="エージェントに覚えさせたい知識を入力..."
+											placeholder="なかまに覚えさせたい知識を入力..."
 											maxLength={500}
 											disabled={createKnowledgeMutation.isPending}
 											required
@@ -188,7 +200,7 @@ export default function AgentKnowledge() {
 													createKnowledgeMutation.isPending || !title.trim() || !content.trim()
 												}
 											>
-												{createKnowledgeMutation.isPending ? "追加中..." : "ナレッジを追加"}
+												{createKnowledgeMutation.isPending ? "追加中..." : "知識を追加"}
 											</Button>
 											<Button
 												type="button"
@@ -210,18 +222,27 @@ export default function AgentKnowledge() {
 
 						{/* Knowledge List */}
 						{knowledge.length === 0 ? (
-							<EmptyState
-								message="まだナレッジがありません。知識を与えて育てましょう！"
-								actionLabel="最初のナレッジを追加"
-								onAction={() => setShowForm(true)}
-							/>
+							<div className="text-center py-12 bg-muted/50 rounded-xl">
+								<p className="text-4xl mb-3">📦</p>
+								<p className="text-lg font-medium text-foreground mb-2">倉庫はまだ空っぽ</p>
+								<p className="text-muted-foreground mb-4">知識を与えて議論力を高めよう!</p>
+								<Button onClick={() => setShowForm(true)}>最初の知識を追加</Button>
+							</div>
 						) : (
-							<div className="space-y-4">
-								{knowledge.map((entry) => (
-									<Card key={entry.id}>
-										<CardContent>
-											<div className="flex justify-between items-start mb-3">
-												<h3 className="font-semibold text-lg">{entry.title}</h3>
+							<div className="space-y-3">
+								{knowledge.map((entry, index) => (
+									<Card
+										key={entry.id}
+										className="hover:shadow-md transition-shadow overflow-hidden"
+									>
+										<CardContent className="py-4">
+											<div className="flex justify-between items-start mb-2">
+												<div className="flex items-center gap-2">
+													<span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-full w-6 h-6 flex items-center justify-center">
+														{index + 1}
+													</span>
+													<h3 className="font-semibold">{entry.title}</h3>
+												</div>
 												<ConfirmDialog
 													trigger={
 														<Button
@@ -235,12 +256,12 @@ export default function AgentKnowledge() {
 													title="ナレッジを削除"
 													description={`「${entry.title}」を削除しますか？この操作は取り消せません。`}
 													confirmLabel="削除"
-													cancelLabel="キャンセル"
+													cancelLabel="やめる"
 													onConfirm={() => handleDelete(entry.id)}
 													variant="destructive"
 												/>
 											</div>
-											<p className="text-foreground whitespace-pre-wrap">{entry.content}</p>
+											<p className="text-foreground whitespace-pre-wrap text-sm">{entry.content}</p>
 											<p className="mt-3 text-xs text-muted-foreground">
 												追加: {formatDateTime(entry.created_at)}
 											</p>
@@ -251,7 +272,7 @@ export default function AgentKnowledge() {
 								{/* Empty Slot Indicators */}
 								{emptySlots > 0 && (
 									<div
-										className="border border-dashed rounded-lg p-6 text-center text-muted-foreground cursor-pointer hover:border-primary/50 transition-colors"
+										className="border border-dashed rounded-lg p-6 text-center text-muted-foreground cursor-pointer hover:border-blue-400/50 transition-colors"
 										onClick={() => setShowForm(true)}
 										onKeyDown={(e) => {
 											if (e.key === "Enter" || e.key === " ") setShowForm(true);

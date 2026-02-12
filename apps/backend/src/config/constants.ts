@@ -27,7 +27,12 @@ export const CRON_SCHEDULE_TURN = "*/15 * * * *";
 /**
  * Maximum number of agents a user can own
  */
-export const MAX_AGENTS_PER_USER = 2;
+export const MAX_AGENTS_PER_USER = 4;
+
+/**
+ * Maximum number of active (participating in deliberation) agents per user
+ */
+export const MAX_ACTIVE_AGENTS_PER_USER = 2;
 
 /**
  * Number of agents participating in each session
@@ -103,7 +108,7 @@ export const LLM_TOKEN_LIMITS = {
 	/**
 	 * Maximum tokens for next topics generation
 	 */
-	NEXT_TOPICS: 2000,
+	NEXT_TOPICS: 3000,
 } as const;
 
 // ============================================================================
