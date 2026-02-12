@@ -16,6 +16,7 @@ import type {
 	AgentPersona,
 	Feedback,
 	JudgeVerdict,
+	NextTopic,
 	Session,
 	Statement,
 	StatementWithAgent,
@@ -549,5 +550,65 @@ ${feedback.content}
 	} catch (error) {
 		console.error("Failed to generate session strategy:", error);
 		throw error;
+	}
+}
+
+/**
+ * Generate next topic based on session results
+ * Returns a single topic suggestion for continuing the deliberation
+ */
+export async function generateNextTopic(
+	env: Bindings,
+	session: { topic_title: string; topic_description: string },
+	sessionSummary: string,
+	judgeVerdict: JudgeVerdict,
+): Promise<NextTopic | null> {
+	const systemPrompt = "あなたは熟議の論点を分析し、次に議論すべきテーマを提案する専門家です。";
+
+	const userPrompt = `## 今回のトピック
+${session.topic_title}: ${session.topic_description}
+
+## セッションのサマリー
+${sessionSummary}
+
+## 審判の評価
+- 評価サマリー: ${judgeVerdict.summary}
+- コンセンサス: ${judgeVerdict.consensus}
+
+## 指示
+この議論を踏まえて、次に議論すべき論点を1つ提案してください。
+- 今回の議論で合意できなかったが、溝が埋まる可能性のある論点
+- 新たに浮上した論点
+のいずれかの観点から、最も重要な論点を選んでください。
+
+JSON形式で出力してください（他の説明は不要です）：
+{ "title": "30文字以内のタイトル", "description": "100文字以内の説明" }`;
+
+	try {
+		const response = await callAnthropicAPI(env, {
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.NEXT_TOPICS,
+			system: systemPrompt,
+			messages: [{ role: "user", content: userPrompt }],
+		});
+
+		const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+		if (!jsonMatch) {
+			throw new Error("Failed to extract JSON from response");
+		}
+
+		const topic = JSON.parse(jsonMatch[0]) as NextTopic;
+
+		if (!topic.title || !topic.description) {
+			throw new Error("Invalid topic structure: missing title or description");
+		}
+
+		return {
+			title: topic.title.slice(0, 30),
+			description: topic.description.slice(0, 100),
+		};
+	} catch (error) {
+		console.error("Failed to generate next topic:", error);
+		return null;
 	}
 }

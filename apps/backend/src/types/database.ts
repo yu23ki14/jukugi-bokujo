@@ -52,6 +52,11 @@ export interface Topic {
 	updated_at: number;
 }
 
+export interface NextTopic {
+	title: string;
+	description: string;
+}
+
 // ============================================================================
 // Session Types
 // ============================================================================

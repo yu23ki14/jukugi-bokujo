@@ -99,6 +99,11 @@ export const LLM_TOKEN_LIMITS = {
 	 * Maximum tokens for rolling turn summary generation
 	 */
 	TURN_SUMMARY: 1000,
+
+	/**
+	 * Maximum tokens for next topics generation
+	 */
+	NEXT_TOPICS: 2000,
 } as const;
 
 // ============================================================================

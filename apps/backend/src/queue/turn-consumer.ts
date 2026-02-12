@@ -460,8 +460,6 @@ ${modeStrategy.getUserPromptSuffix(currentTurn, session.max_turns)}
 
 <summary>[1行要約 50文字以内]</summary>`;
 
-console.log(userPrompt)
-
 	try {
 		const response = await callAnthropicAPI(env, {
 			model: LLM_MODEL,

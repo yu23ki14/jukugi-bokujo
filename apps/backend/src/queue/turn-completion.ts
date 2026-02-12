@@ -6,12 +6,20 @@
 import { SUMMARY_MIN_TURN } from "../config/constants";
 import {
 	generateJudgeVerdict,
+	generateNextTopic,
 	generateSessionSummary,
 	generateTurnSummary,
 	updateAgentPersona,
 } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
-import type { Agent, Feedback, Session, Statement, StatementWithAgent } from "../types/database";
+import type {
+	Agent,
+	Feedback,
+	JudgeVerdict,
+	Session,
+	Statement,
+	StatementWithAgent,
+} from "../types/database";
 import { getCurrentTimestamp } from "../utils/timestamp";
 import { generateUUID } from "../utils/uuid";
 
@@ -198,6 +206,9 @@ async function completeSession(
 
 		// 5. Update agent personas based on user inputs
 		await updateAgentPersonas(env, session.id);
+
+		// 6. Evolve topics: generate next topics and archive the current one
+		await evolveTopics(env, session, summary, judgeVerdict);
 	} catch (error) {
 		console.error(`[Session Completion] Failed to complete session ${session.id}:`, error);
 		// Mark as completed even if summary/verdict generation fails
@@ -321,4 +332,56 @@ async function updateSingleAgentPersona(env: Bindings, agentId: string): Promise
 	console.log(
 		`[Session Completion] Persona updated for agent ${agent.name} to version ${newPersona.version}`,
 	);
+}
+
+/**
+ * Evolve topic: generate next topic from session results and archive the current one
+ */
+async function evolveTopics(
+	env: Bindings,
+	session: Session & { topic_title: string; topic_description: string },
+	sessionSummary: string,
+	judgeVerdict: JudgeVerdict,
+): Promise<void> {
+	console.log(`[Topic Evolution] Starting topic evolution for session ${session.id}`);
+
+	try {
+		// 1. Check if topic is still active (another session may have already archived it)
+		const topic = await env.DB.prepare("SELECT status FROM topics WHERE id = ?")
+			.bind(session.topic_id)
+			.first<{ status: string }>();
+
+		if (!topic || topic.status !== "active") {
+			console.log(`[Topic Evolution] Topic ${session.topic_id} is already archived, skipping`);
+			return;
+		}
+
+		// 2. Generate next topic via LLM
+		const nextTopic = await generateNextTopic(env, session, sessionSummary, judgeVerdict);
+
+		if (!nextTopic) {
+			console.log("[Topic Evolution] No next topic generated, skipping");
+			return;
+		}
+
+		// 3. Insert new topic
+		const now = getCurrentTimestamp();
+		const topicId = generateUUID();
+		await env.DB.prepare(
+			"INSERT INTO topics (id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
+		)
+			.bind(topicId, nextTopic.title, nextTopic.description, now, now)
+			.run();
+		console.log(`[Topic Evolution] Created new topic: ${nextTopic.title} (${topicId})`);
+
+		// 4. Archive the old topic
+		await env.DB.prepare("UPDATE topics SET status = 'archived', updated_at = ? WHERE id = ?")
+			.bind(now, session.topic_id)
+			.run();
+
+		console.log(`[Topic Evolution] Archived topic ${session.topic_id}`);
+	} catch (error) {
+		console.error(`[Topic Evolution] Failed to evolve topics for session ${session.id}:`, error);
+		// Topic evolution failure should not block session completion
+	}
 }
