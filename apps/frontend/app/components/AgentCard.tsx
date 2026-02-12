@@ -36,9 +36,7 @@ export function AgentCard({ agent, variant, action }: AgentCardProps) {
 							{isInSession ? "🐄💬" : "🐄"}
 						</p>
 						{isActive && (
-							<span className="absolute -top-1 -right-3 text-xs">
-								{isInSession ? "🔥" : "✨"}
-							</span>
+							<span className="absolute -top-1 -right-3 text-xs">{isInSession ? "🔥" : "✨"}</span>
 						)}
 					</div>
 					<h3 className="font-bold text-sm text-foreground">{agent.name}</h3>

@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { AgentCard } from "../../components/AgentCard";
-import { EmptyState, InfoAlert, LoadingState } from "../../components/design-system";
+import { InfoAlert, LoadingState } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -122,9 +122,7 @@ export default function AgentsIndex() {
 														disabled={isInSession(agent) || statusMutation.isPending}
 														onClick={() => handleStatusChange(agent.id, "reserve")}
 														title={
-															isInSession(agent)
-																? "セッション参加中は移動できません"
-																: undefined
+															isInSession(agent) ? "セッション参加中は移動できません" : undefined
 														}
 													>
 														{isInSession(agent) ? "熟議中..." : "小屋へ"}
@@ -189,9 +187,7 @@ export default function AgentsIndex() {
 																disabled={isActiveSlotFull || statusMutation.isPending}
 																onClick={() => handleStatusChange(agent.id, "active")}
 																title={
-																	isActiveSlotFull
-																		? "放牧エリアに空きがありません"
-																		: undefined
+																	isActiveSlotFull ? "放牧エリアに空きがありません" : undefined
 																}
 															>
 																{isActiveSlotFull ? "空きなし" : "放牧"}

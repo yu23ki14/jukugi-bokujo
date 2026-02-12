@@ -3,7 +3,6 @@ import { useParams } from "react-router";
 import {
 	BackLink,
 	ConfirmDialog,
-	EmptyState,
 	FormField,
 	InfoAlert,
 	LoadingState,
@@ -20,6 +19,7 @@ import {
 import { formatDateTime } from "../../utils/date";
 
 const MAX_SLOTS = 10;
+const SLOT_KEYS = Array.from({ length: MAX_SLOTS }, (_, i) => `gauge-${i}`);
 
 export function meta() {
 	return [{ title: "知識倉庫 - 熟議牧場" }];
@@ -132,9 +132,9 @@ export default function AgentKnowledge() {
 							</div>
 							<CardContent className="py-4">
 								<div className="flex gap-1.5">
-									{Array.from({ length: MAX_SLOTS }).map((_, i) => (
+									{SLOT_KEYS.map((key, i) => (
 										<div
-											key={`slot-${i}`}
+											key={key}
 											className={`h-3 flex-1 rounded-full transition-colors ${
 												i < knowledge.length
 													? "bg-gradient-to-r from-blue-500 to-cyan-500"
@@ -271,17 +271,13 @@ export default function AgentKnowledge() {
 
 								{/* Empty Slot Indicators */}
 								{emptySlots > 0 && (
-									<div
-										className="border border-dashed rounded-lg p-6 text-center text-muted-foreground cursor-pointer hover:border-blue-400/50 transition-colors"
+									<button
+										type="button"
+										className="w-full border border-dashed rounded-lg p-6 text-center text-muted-foreground cursor-pointer hover:border-blue-400/50 transition-colors"
 										onClick={() => setShowForm(true)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") setShowForm(true);
-										}}
-										role="button"
-										tabIndex={0}
 									>
 										<p className="text-sm">残り {emptySlots} スロット空き</p>
-									</div>
+									</button>
 								)}
 							</div>
 						)}
