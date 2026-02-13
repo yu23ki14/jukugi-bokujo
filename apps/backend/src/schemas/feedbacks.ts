@@ -10,10 +10,12 @@ export const CreateFeedbackRequestSchema = z
 			description: "Session ID to provide feedback for",
 			example: "123e4567-e89b-12d3-a456-426614174000",
 		}),
-		content: z.string().min(1).max(400).openapi({
-			description: "Feedback content (max 400 characters)",
-			example:
-				"前回は環境問題について深く議論できていました。次回は経済的な観点もバランスよく取り入れてください。",
+		content: z.string().min(1).max(200).openapi({
+			description: "Feedback content (max 200 characters)",
+			example: "もっと相手の意見を聞いてから反論してみて",
+		}),
+		reflection_id: z.string().uuid().optional().openapi({
+			description: "ID of the agent reflection this feedback responds to",
 		}),
 	})
 	.openapi("CreateFeedbackRequest");
@@ -44,8 +46,8 @@ export const CreateFeedbackResponseSchema = z
 
 export const UpdateFeedbackRequestSchema = z
 	.object({
-		content: z.string().min(1).max(400).openapi({
-			description: "Updated feedback content (max 400 characters)",
+		content: z.string().min(1).max(200).openapi({
+			description: "Updated feedback content (max 200 characters)",
 		}),
 	})
 	.openapi("UpdateFeedbackRequest");
@@ -85,3 +87,37 @@ export const ListSessionStrategiesResponseSchema = z
 		}),
 	})
 	.openapi("ListSessionStrategiesResponse");
+
+export const PersonaChangeResponseSchema = z
+	.object({
+		persona_before: z.string().openapi({
+			description: "JSON string of persona before update",
+		}),
+		persona_after: z.string().openapi({
+			description: "JSON string of persona after update",
+		}),
+	})
+	.openapi("PersonaChangeResponse");
+
+export const CreateFeedbackWithPersonaResponseSchema = z
+	.object({
+		id: z.string().uuid().openapi({
+			description: "Feedback ID",
+		}),
+		agent_id: z.string().uuid().openapi({
+			description: "Agent ID",
+		}),
+		session_id: z.string().uuid().openapi({
+			description: "Session ID",
+		}),
+		content: z.string().openapi({
+			description: "Feedback content",
+		}),
+		created_at: z.number().int().openapi({
+			description: "Unix timestamp (seconds) when created",
+		}),
+		persona_change: PersonaChangeResponseSchema.nullable().openapi({
+			description: "Persona change if update was applied, null otherwise",
+		}),
+	})
+	.openapi("CreateFeedbackWithPersonaResponse");
