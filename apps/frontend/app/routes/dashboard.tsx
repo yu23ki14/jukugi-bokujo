@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-react";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
 	EmptyState,
 	FormField,
@@ -12,6 +12,13 @@ import {
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
+import {
 	Carousel,
 	CarouselContent,
 	CarouselItem,
@@ -22,12 +29,14 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import {
 	type AgentSummary,
 	type FeedbackRequest,
+	type PersonaChangeData,
 	type SessionSummary,
 	useGetApiAgents,
 	useGetApiFeedbackRequests,
 	useGetApiSessions,
 	usePostApiAgentsAgentIdFeedbacks,
 } from "../hooks/backend";
+import type { AgentPersona } from "../lib/types";
 
 export function meta() {
 	return [{ title: "Dashboard - Jukugi Bokujo" }];
@@ -127,10 +136,11 @@ export default function Dashboard() {
 			? completedSessionsResponse.total
 			: 0;
 
-	const feedbackRequests =
+	const feedbackRequests = (
 		feedbackData?.data && "feedback_requests" in feedbackData.data
 			? feedbackData.data.feedback_requests
-			: [];
+			: []
+	).filter((r) => !!r.reflection_question);
 
 	if (hasError) {
 		console.error("Failed to load dashboard data:", {
@@ -337,18 +347,14 @@ function StepCard({
 
 function FeedbackWantedSection({
 	feedbackRequests,
-	agents,
 	refetchFeedback,
 }: {
 	feedbackRequests: FeedbackRequest[];
-	agents: AgentSummary[];
 	refetchFeedback: () => void;
 }) {
 	if (feedbackRequests.length === 0) {
 		return null;
 	}
-
-	const agentMap = new Map(agents.map((a) => [a.id, a]));
 
 	return (
 		<div className="mb-8">
@@ -357,11 +363,7 @@ function FeedbackWantedSection({
 				<CarouselContent>
 					{feedbackRequests.map((request: FeedbackRequest) => (
 						<CarouselItem key={`${request.agent_id}-${request.session_id}`}>
-							<FeedbackCard
-								request={request}
-								agent={agentMap.get(request.agent_id)}
-								onSubmitted={refetchFeedback}
-							/>
+							<FeedbackCard request={request} onSubmitted={refetchFeedback} />
 						</CarouselItem>
 					))}
 				</CarouselContent>
@@ -374,75 +376,282 @@ function FeedbackWantedSection({
 
 function FeedbackCard({
 	request,
-	agent,
 	onSubmitted,
 }: {
 	request: FeedbackRequest;
-	agent?: AgentSummary;
 	onSubmitted: () => void;
 }) {
+	const navigate = useNavigate();
 	const [content, setContent] = useState("");
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [submitted, setSubmitted] = useState(false);
+	const [personaChange, setPersonaChange] = useState<PersonaChangeData | null>(null);
 	const mutation = usePostApiAgentsAgentIdFeedbacks();
 
 	const handleSubmit = () => {
 		if (!content.trim()) return;
 
+		setDialogOpen(true);
 		mutation.mutate(
 			{
 				agentId: request.agent_id,
 				data: {
 					session_id: request.session_id,
 					content: content.trim(),
+					reflection_id: request.reflection_id ?? undefined,
 				},
 			},
 			{
-				onSuccess: () => {
+				onSuccess: (response) => {
+					if (response.status === 201 && "persona_change" in response.data) {
+						setPersonaChange(response.data.persona_change ?? null);
+					}
 					setContent("");
-					onSubmitted();
+					setSubmitted(true);
+				},
+				onError: () => {
+					setDialogOpen(false);
 				},
 			},
 		);
 	};
 
-	const coreValue = agent?.persona.core_values[0];
+	const handleDialogClose = (open: boolean) => {
+		if (!open && submitted) {
+			onSubmitted();
+		}
+		setDialogOpen(open);
+	};
+
+	const hasReflection = !!request.reflection_question;
 
 	return (
-		<Card className="py-3 border-l-4 border-orange-400">
-			<CardContent className="px-3">
-				<div className="mb-3">
-					<p className="font-bold text-lg">🐄 {request.agent_name} が帰ってきた！</p>
-					<p className="text-muted-foreground text-sm">
-						「{request.topic_title}」の議論に参加してきました
-					</p>
-					{coreValue && (
-						<div className="mt-2">
-							<StatusBadge variant="info">大切にしていること: {coreValue}</StatusBadge>
+		<>
+			<Card className="py-3 border-l-4 border-orange-400">
+				<CardContent className="px-3">
+					<div className="mb-3">
+						{hasReflection ? (
+							<>
+								<p className="font-bold text-lg">
+									🐄 {request.agent_name} がアドバイスを求めています
+								</p>
+								<p className="text-muted-foreground text-sm mb-2">
+									「{request.topic_title}」の議論に参加してきました
+								</p>
+								<Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
+									<CardContent className="py-3 px-3">
+										<p className="font-semibold text-md mb-1">💭 {request.reflection_question}</p>
+										<p className="text-sm">{request.reflection_context}</p>
+									</CardContent>
+								</Card>
+							</>
+						) : (
+							<>
+								<p className="font-bold text-lg">🐄 {request.agent_name} が帰ってきた！</p>
+								<p className="text-muted-foreground text-sm">
+									「{request.topic_title}」の議論に参加してきました
+								</p>
+							</>
+						)}
+					</div>
+
+					<FormField
+						label="声をかける"
+						name={`feedback-${request.agent_id}-${request.session_id}`}
+						type="textarea"
+						value={content}
+						onChange={setContent}
+						placeholder={
+							hasReflection
+								? "アドバイスを書いてあげよう..."
+								: "がんばったね、次はもっと〇〇してみて..."
+						}
+						maxLength={200}
+						rows={3}
+						disabled={mutation.isPending}
+					/>
+
+					<div className="flex justify-between items-center mt-3">
+						<Button variant="link" size="sm" asChild className="px-0">
+							<Link to={`/sessions/${request.session_id}`}>議論を見る →</Link>
+						</Button>
+						<Button
+							onClick={handleSubmit}
+							disabled={!content.trim() || mutation.isPending}
+							size="sm"
+						>
+							声をかける
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
+
+			<Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+				<DialogContent showCloseButton={!mutation.isPending}>
+					{mutation.isPending ? (
+						<>
+							<style>
+								{`@keyframes cow-bounce {
+									0%, 100% { transform: translateY(0); }
+									50% { transform: translateY(-12px); }
+								}`}
+							</style>
+							<div className="text-center py-8">
+								<p
+									className="text-5xl mb-4"
+									style={{ animation: "cow-bounce 0.8s ease-in-out infinite" }}
+								>
+									🐄
+								</p>
+								<DialogHeader className="items-center">
+									<DialogTitle>{request.agent_name} に伝えています...</DialogTitle>
+									<DialogDescription>性格に変化があるかも</DialogDescription>
+								</DialogHeader>
+								<div className="flex justify-center gap-1 mt-4">
+									{[0, 1, 2].map((i) => (
+										<div
+											key={i}
+											className="w-2 h-2 rounded-full bg-primary animate-bounce"
+											style={{ animationDelay: `${i * 0.15}s` }}
+										/>
+									))}
+								</div>
+							</div>
+						</>
+					) : personaChange ? (
+						<div className="text-center py-4">
+							<p className="text-5xl mb-3">🎉</p>
+							<DialogHeader className="items-center mb-4">
+								<DialogTitle>{request.agent_name} が成長しました！</DialogTitle>
+							</DialogHeader>
+							<div className="text-left">
+								<PersonaChangeDiffCard personaChange={personaChange} />
+							</div>
+							<div className="flex flex-col gap-2 mt-6">
+								<Button
+									onClick={() => {
+										onSubmitted();
+										navigate(`/agents/${request.agent_id}?tab=growth`);
+									}}
+								>
+									成長きろくを見る
+								</Button>
+								<Button variant="ghost" onClick={() => handleDialogClose(false)}>
+									とじる
+								</Button>
+							</div>
+						</div>
+					) : (
+						<div className="text-center py-4">
+							<p className="text-5xl mb-3">🐄</p>
+							<DialogHeader className="items-center mb-4">
+								<DialogTitle>声をかけました！</DialogTitle>
+								<DialogDescription>{request.agent_name} に気持ちが伝わりました</DialogDescription>
+							</DialogHeader>
+							<div className="flex flex-col gap-2 mt-4">
+								<Button
+									variant="outline"
+									onClick={() => {
+										onSubmitted();
+										navigate(`/agents/${request.agent_id}`);
+									}}
+								>
+									{request.agent_name}の詳細を見る
+								</Button>
+								<Button variant="ghost" onClick={() => handleDialogClose(false)}>
+									とじる
+								</Button>
+							</div>
 						</div>
 					)}
-				</div>
+				</DialogContent>
+			</Dialog>
+		</>
+	);
+}
 
-				<FormField
-					label="声をかける"
-					name={`feedback-${request.agent_id}-${request.session_id}`}
-					type="textarea"
-					value={content}
-					onChange={setContent}
-					placeholder="がんばったね、次はもっと〇〇してみて..."
-					maxLength={400}
-					rows={3}
-					disabled={mutation.isPending}
-				/>
+function PersonaChangeDiffCard({ personaChange }: { personaChange: PersonaChangeData }) {
+	let before: AgentPersona;
+	let after: AgentPersona;
+	try {
+		before = JSON.parse(personaChange.persona_before) as AgentPersona;
+		after = JSON.parse(personaChange.persona_after) as AgentPersona;
+	} catch {
+		return null;
+	}
 
-				<div className="flex justify-between items-center mt-3">
-					<Button variant="link" size="sm" asChild className="px-0">
-						<Link to={`/sessions/${request.session_id}`}>議論を見る →</Link>
-					</Button>
-					<Button onClick={handleSubmit} disabled={!content.trim() || mutation.isPending} size="sm">
-						{mutation.isPending ? "送信中..." : "声をかける"}
-					</Button>
+	const addedValues = after.core_values.filter((v) => !before.core_values.includes(v));
+	const removedValues = before.core_values.filter((v) => !after.core_values.includes(v));
+	const addedTraits = after.personality_traits.filter(
+		(t) => !before.personality_traits.includes(t),
+	);
+	const removedTraits = before.personality_traits.filter(
+		(t) => !after.personality_traits.includes(t),
+	);
+	const thinkingChanged = before.thinking_style !== after.thinking_style;
+
+	return (
+		<div className="space-y-3">
+			<div className="flex items-center gap-2 text-sm">
+				<StatusBadge variant="pending">Lv.{before.version}</StatusBadge>
+				<span className="text-muted-foreground">→</span>
+				<StatusBadge variant="active">Lv.{after.version}</StatusBadge>
+			</div>
+
+			{(addedValues.length > 0 || removedValues.length > 0) && (
+				<div>
+					<p className="text-xs font-semibold text-muted-foreground mb-1">大事にしていること</p>
+					<div className="flex flex-wrap gap-1">
+						{addedValues.map((v) => (
+							<StatusBadge key={`+${v}`} variant="active">
+								+ {v}
+							</StatusBadge>
+						))}
+						{removedValues.map((v) => (
+							<StatusBadge key={`-${v}`} variant="cancelled">
+								- {v}
+							</StatusBadge>
+						))}
+					</div>
 				</div>
-			</CardContent>
-		</Card>
+			)}
+
+			{(addedTraits.length > 0 || removedTraits.length > 0) && (
+				<div>
+					<p className="text-xs font-semibold text-muted-foreground mb-1">性格特性</p>
+					<div className="flex flex-wrap gap-1">
+						{addedTraits.map((t) => (
+							<StatusBadge key={`+${t}`} variant="active">
+								+ {t}
+							</StatusBadge>
+						))}
+						{removedTraits.map((t) => (
+							<StatusBadge key={`-${t}`} variant="cancelled">
+								- {t}
+							</StatusBadge>
+						))}
+					</div>
+				</div>
+			)}
+
+			{thinkingChanged && (
+				<div>
+					<p className="text-xs font-semibold text-muted-foreground mb-1">思考スタイル</p>
+					<p className="text-xs">
+						<span className="line-through text-muted-foreground">{before.thinking_style}</span>
+					</p>
+					<p className="text-xs font-medium">{after.thinking_style}</p>
+				</div>
+			)}
+
+			{addedValues.length === 0 &&
+				removedValues.length === 0 &&
+				addedTraits.length === 0 &&
+				removedTraits.length === 0 &&
+				!thinkingChanged && (
+					<p className="text-xs text-muted-foreground">内面的な変化がありました（背景の更新）</p>
+				)}
+		</div>
 	);
 }
 
@@ -468,7 +677,6 @@ function AgentsDashboardView({
 			{/* Feedback Wanted */}
 			<FeedbackWantedSection
 				feedbackRequests={feedbackRequests}
-				agents={agents}
 				refetchFeedback={refetchFeedback}
 			/>
 

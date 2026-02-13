@@ -103,3 +103,21 @@ export interface JudgeVerdict {
 	highlights: string[];
 	consensus?: string;
 }
+
+export interface AgentReflection {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	question: string;
+	context_summary: string;
+	created_at: number;
+}
+
+export interface PersonaChange {
+	id: string;
+	agent_id: string;
+	feedback_id: string;
+	persona_before: string;
+	persona_after: string;
+	created_at: number;
+}

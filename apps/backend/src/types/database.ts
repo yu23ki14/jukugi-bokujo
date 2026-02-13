@@ -187,7 +187,34 @@ export interface Feedback {
 	agent_id: string;
 	session_id: string;
 	content: string;
+	reflection_id: string | null;
 	applied_at: number | null;
+	created_at: number;
+}
+
+// ============================================================================
+// Agent Reflection Types
+// ============================================================================
+
+export interface AgentReflection {
+	id: string;
+	agent_id: string;
+	session_id: string;
+	question: string;
+	context_summary: string;
+	created_at: number;
+}
+
+// ============================================================================
+// Persona Change Types
+// ============================================================================
+
+export interface PersonaChange {
+	id: string;
+	agent_id: string;
+	feedback_id: string;
+	persona_before: string; // JSON string of AgentPersona
+	persona_after: string; // JSON string of AgentPersona
 	created_at: number;
 }
 

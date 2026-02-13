@@ -109,6 +109,11 @@ export const LLM_TOKEN_LIMITS = {
 	 * Maximum tokens for next topics generation
 	 */
 	NEXT_TOPICS: 3000,
+
+	/**
+	 * Maximum tokens for agent reflection generation
+	 */
+	AGENT_REFLECTION: 500,
 } as const;
 
 // ============================================================================
@@ -128,7 +133,7 @@ export const DIRECTION_MAX_LENGTH = 80;
 /**
  * Maximum length for feedback content
  */
-export const FEEDBACK_MAX_LENGTH = 400;
+export const FEEDBACK_MAX_LENGTH = 200;
 
 /**
  * Maximum length for knowledge title
@@ -139,6 +144,21 @@ export const KNOWLEDGE_TITLE_MAX_LENGTH = 30;
  * Maximum length for knowledge content
  */
 export const KNOWLEDGE_CONTENT_MAX_LENGTH = 500;
+
+/**
+ * Maximum number of personality traits per agent
+ */
+export const PERSONA_TRAITS_MAX = 10;
+
+/**
+ * Minimum number of core values per agent
+ */
+export const CORE_VALUES_MIN = 3;
+
+/**
+ * Maximum number of core values per agent
+ */
+export const CORE_VALUES_MAX = 5;
 
 /**
  * Maximum number of previous statements to fetch for context

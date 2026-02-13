@@ -180,7 +180,7 @@ export const doubleDiamondStrategy: SessionModeStrategy = {
 	modeId: "double_diamond",
 	modeName: "ダブルダイアモンド",
 	description: "発散と収束を繰り返すデザイン思考フレームワーク（Discover→Define→Develop→Deliver）",
-	defaultMaxTurns: 10,
+	defaultMaxTurns: 3,
 
 	getPhaseConfig(turnNumber: number, maxTurns: number): PhaseConfig {
 		const phase = getPhaseForTurn(turnNumber, maxTurns);

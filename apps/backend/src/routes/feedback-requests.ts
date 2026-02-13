@@ -62,12 +62,15 @@ feedbackRequests.openapi(listFeedbackRequestsRoute, async (c) => {
 
 		const result = await c.env.DB.prepare(
 			`SELECT DISTINCT a.id as agent_id, a.name as agent_name,
-              s.id as session_id, t.title as topic_title, s.completed_at
+              s.id as session_id, t.title as topic_title, s.completed_at,
+              ar.id as reflection_id, ar.question as reflection_question,
+              ar.context_summary as reflection_context
        FROM sessions s
        JOIN session_participants sp ON s.id = sp.session_id
        JOIN agents a ON sp.agent_id = a.id
        JOIN topics t ON s.topic_id = t.id
        LEFT JOIN feedbacks f ON f.agent_id = a.id AND f.session_id = s.id
+       LEFT JOIN agent_reflections ar ON ar.agent_id = a.id AND ar.session_id = s.id
        WHERE a.user_id = ?
          AND s.status = 'completed'
          AND s.completed_at >= ?
@@ -81,6 +84,9 @@ feedbackRequests.openapi(listFeedbackRequestsRoute, async (c) => {
 				session_id: string;
 				topic_title: string;
 				completed_at: number;
+				reflection_id: string | null;
+				reflection_question: string | null;
+				reflection_context: string | null;
 			}>();
 
 		return c.json(
