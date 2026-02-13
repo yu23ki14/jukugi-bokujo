@@ -4,11 +4,14 @@ import { cn } from "~/lib/utils";
 type InfoAlertVariant = "info" | "warning" | "error" | "feedback" | "strategy";
 
 const variantStyles: Record<InfoAlertVariant, string> = {
-	info: "border-blue-400 bg-blue-50 text-blue-900 [&>svg]:text-blue-600",
-	warning: "border-orange-400 bg-orange-50 text-orange-900 [&>svg]:text-orange-600",
-	error: "border-red-400 bg-red-50 text-red-900 [&>svg]:text-red-600",
-	feedback: "border-orange-400 bg-orange-50 text-orange-900 [&>svg]:text-orange-600",
-	strategy: "border-indigo-400 bg-indigo-50 text-indigo-900 [&>svg]:text-indigo-600",
+	info: "border-alert-info-border bg-alert-info-bg text-alert-info [&>svg]:text-alert-info",
+	warning:
+		"border-alert-warning-border bg-alert-warning-bg text-alert-warning [&>svg]:text-alert-warning",
+	error: "border-alert-error-border bg-alert-error-bg text-alert-error [&>svg]:text-alert-error",
+	feedback:
+		"border-alert-warning-border bg-alert-warning-bg text-alert-warning [&>svg]:text-alert-warning",
+	strategy:
+		"border-alert-strategy-border bg-alert-strategy-bg text-alert-strategy [&>svg]:text-alert-strategy",
 };
 
 interface InfoAlertProps {

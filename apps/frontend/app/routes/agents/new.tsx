@@ -1,7 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { BackLink, FormField, InfoAlert, StatusBadge } from "../../components/design-system";
+import {
+	BackLink,
+	FormField,
+	GradientTitle,
+	InfoAlert,
+	StatusBadge,
+} from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -171,9 +177,9 @@ export default function NewAgent() {
 									</span>
 								</div>
 								<p className="text-6xl mb-4">🐄</p>
-								<p className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+								<GradientTitle as="p" className="text-2xl">
 									{createdAgent.name}
-								</p>
+								</GradientTitle>
 								<p className="text-lg text-muted-foreground">が牧場にやってきた!</p>
 							</div>
 
@@ -228,9 +234,7 @@ export default function NewAgent() {
 				{/* Header */}
 				<div className="text-center mb-8">
 					<p className="text-5xl mb-3">🥚</p>
-					<h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
-						新しいなかまを迎える
-					</h1>
+					<GradientTitle className="text-3xl mb-2">新しいなかまを迎える</GradientTitle>
 					<p className="text-muted-foreground">
 						名前を決めると、AIが独自のペルソナを生成します
 						<br />

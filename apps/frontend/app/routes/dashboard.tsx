@@ -5,6 +5,7 @@ import {
 	EmptyState,
 	FormField,
 	LoadingState,
+	ProgressBar,
 	ScoreCard,
 	StatusBadge,
 } from "~/components/design-system";
@@ -225,12 +226,7 @@ function RanchLevel({
 				<span className="text-sm font-semibold text-muted-foreground">Lv.{level}</span>
 				<span className="text-xs text-muted-foreground ml-auto">{currentLevelXp} / 100 XP</span>
 			</div>
-			<div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-4">
-				<div
-					className="h-full bg-primary rounded-full transition-all"
-					style={{ width: `${currentLevelXp}%` }}
-				/>
-			</div>
+			<ProgressBar value={currentLevelXp} max={100} className="h-3 mb-4" />
 			<div className="grid grid-cols-2 gap-4">
 				<ScoreCard label="エージェント数" value={agentCount} color="blue" />
 				<ScoreCard label="参加議論数" value={completedSessionsTotal} color="green" />

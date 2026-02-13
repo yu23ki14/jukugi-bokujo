@@ -1,7 +1,7 @@
 import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, LoadingState, StatusBadge } from "~/components/design-system";
+import { EmptyState, GradientTitle, LoadingState, StatusBadge } from "~/components/design-system";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { createApiClient } from "../lib/api";
@@ -44,9 +44,7 @@ export default function Home() {
 			{/* Hero Section */}
 			<div className="text-center py-20 px-4">
 				<p className="text-lg text-muted-foreground mb-4 tracking-widest">AI放牧シミュレーション</p>
-				<h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
-					熟議牧場
-				</h1>
+				<GradientTitle className="text-6xl mb-4">熟議牧場</GradientTitle>
 				<p className="text-2xl font-bold text-foreground mb-6">育てて、送り出して、見守る。</p>
 				<p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
 					自分の代わりにAIが議論してくれる、

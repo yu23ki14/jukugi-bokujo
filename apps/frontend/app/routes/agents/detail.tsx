@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import {
 	BackLink,
 	ConfirmDialog,
+	GradientTitle,
 	InfoAlert,
 	LoadingState,
 	StatusBadge,
@@ -91,9 +92,7 @@ export default function AgentDetail() {
 						{/* Agent Profile Header */}
 						<div className="text-center mb-8">
 							<p className="text-6xl mb-3">🐄</p>
-							<h1 className="text-3xl font-bold mb-1 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
-								{agent.name}
-							</h1>
+							<GradientTitle className="text-3xl mb-1">{agent.name}</GradientTitle>
 							<Badge variant="secondary" className="text-sm">
 								Lv.{agent.persona.version}
 							</Badge>

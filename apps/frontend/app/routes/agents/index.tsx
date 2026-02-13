@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { AgentCard } from "../../components/AgentCard";
-import { InfoAlert, LoadingState } from "../../components/design-system";
+import { GradientTitle, InfoAlert, LoadingState } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -49,9 +49,7 @@ export default function AgentsIndex() {
 			<div className="-mx-4 -my-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-green-950/20">
 				{/* Ranch Header */}
 				<div className="text-center py-6 px-4">
-					<h1 className="text-2xl font-bold mb-1 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
-						マイエージェント
-					</h1>
+					<GradientTitle className="text-2xl mb-1">マイエージェント</GradientTitle>
 					<p className="text-muted-foreground">
 						{agents.length > 0
 							? `${agents.length}体のなかまがいます`

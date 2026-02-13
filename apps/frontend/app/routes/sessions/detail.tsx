@@ -7,6 +7,7 @@ import {
 	FormField,
 	InfoAlert,
 	LoadingState,
+	ProgressBar,
 	ScoreCard,
 	StatusBadge,
 } from "../../components/design-system";
@@ -308,18 +309,12 @@ function CompletedSection({
 
 /** Turn progress bar */
 function TurnProgressBar({ current, max }: { current: number; max: number }) {
-	const percentage = Math.min((current / max) * 100, 100);
 	return (
 		<div className="flex items-center gap-2">
 			<span className="text-sm text-muted-foreground whitespace-nowrap">
 				ターン {current} / {max}
 			</span>
-			<div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-				<div
-					className="h-full bg-primary rounded-full transition-all"
-					style={{ width: `${percentage}%` }}
-				/>
-			</div>
+			<ProgressBar value={current} max={max} className="w-24" />
 		</div>
 	);
 }

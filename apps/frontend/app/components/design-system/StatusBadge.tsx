@@ -11,13 +11,13 @@ type StatusVariant =
 	| "direction";
 
 const variantStyles: Record<StatusVariant, string> = {
-	active: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-	completed: "bg-green-100 text-green-700 hover:bg-green-100",
-	pending: "bg-gray-100 text-gray-700 hover:bg-gray-100",
-	cancelled: "bg-red-100 text-red-700 hover:bg-red-100",
-	info: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-	feedback: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-	direction: "bg-purple-100 text-purple-700 hover:bg-purple-100",
+	active: "bg-status-active-bg text-status-active hover:bg-status-active-bg",
+	completed: "bg-status-completed-bg text-status-completed hover:bg-status-completed-bg",
+	pending: "bg-status-pending-bg text-status-pending hover:bg-status-pending-bg",
+	cancelled: "bg-status-cancelled-bg text-status-cancelled hover:bg-status-cancelled-bg",
+	info: "bg-status-active-bg text-status-active hover:bg-status-active-bg",
+	feedback: "bg-status-feedback-bg text-status-feedback hover:bg-status-feedback-bg",
+	direction: "bg-status-direction-bg text-status-direction hover:bg-status-direction-bg",
 };
 
 interface StatusBadgeProps {

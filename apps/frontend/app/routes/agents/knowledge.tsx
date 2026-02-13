@@ -4,6 +4,7 @@ import {
 	BackLink,
 	ConfirmDialog,
 	FormField,
+	GradientTitle,
 	InfoAlert,
 	LoadingState,
 } from "../../components/design-system";
@@ -112,9 +113,9 @@ export default function AgentKnowledge() {
 						{/* Header */}
 						<div className="text-center mb-8">
 							<p className="text-5xl mb-3">📚</p>
-							<h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+							<GradientTitle colorScheme="blue" className="text-3xl mb-2">
 								知識倉庫
-							</h1>
+							</GradientTitle>
 							<p className="text-muted-foreground">{agent.name} に知識を与えて議論力を高めよう</p>
 						</div>
 
