@@ -386,6 +386,7 @@ import { directionsRouter } from "./routes/directions";
 import { feedbackRequestsRouter } from "./routes/feedback-requests";
 import { feedbacksRouter } from "./routes/feedbacks";
 import { knowledgeRouter } from "./routes/knowledge";
+import { reflectionsRouter } from "./routes/reflections";
 import { protectedSessionsRouter, publicSessionsRouter } from "./routes/sessions";
 import { adminTopicsRouter, publicTopicsRouter } from "./routes/topics";
 
@@ -396,6 +397,7 @@ app.route("/api", knowledgeRouter); // Mounts /agents/:agentId/knowledge and /kn
 app.route("/api", directionsRouter); // Mounts /agents/:agentId/directions
 app.route("/api", feedbacksRouter); // Mounts /agents/:agentId/feedbacks and /agents/:agentId/strategies
 app.route("/api", feedbackRequestsRouter); // Mounts /feedback-requests
+app.route("/api", reflectionsRouter); // Mounts /agents/:agentId/reflections and /agents/:agentId/persona-changes
 app.route("/api/sessions", publicSessionsRouter); // Public sessions (no auth)
 app.route("/api/sessions", protectedSessionsRouter); // Protected sessions (with auth)
 

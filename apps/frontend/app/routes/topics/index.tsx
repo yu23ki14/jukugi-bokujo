@@ -42,7 +42,7 @@ export default function TopicsIndex() {
 			)}
 
 			{!loading && !error && topics.length > 0 && (
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div className="grid grid-cols-1 gap-6">
 					{topics.map((topic: TopicSummary) => (
 						<Link key={topic.id} to={`/topics/${topic.id}`} className="hover:shadow-lg transition">
 							<Card>

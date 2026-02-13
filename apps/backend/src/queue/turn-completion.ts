@@ -5,6 +5,7 @@
 
 import { SUMMARY_MIN_TURN } from "../config/constants";
 import {
+	generateAgentReflection,
 	generateJudgeVerdict,
 	generateNextTopic,
 	generateSessionSummary,
@@ -216,6 +217,15 @@ async function completeSession(
 
 		console.log(`[Session Completion] Session ${session.id} completed with summary and verdict`);
 
+		// 4.5. Generate agent reflections
+		await generateAgentReflections(
+			env,
+			session.id,
+			summary,
+			session.topic_title,
+			judgeVerdict.highlights,
+		);
+
 		// 5. Update agent personas based on user inputs
 		await updateAgentPersonas(env, session.id);
 
@@ -254,6 +264,89 @@ async function getAllStatements(
 		.all<Statement & { agent_name: string; turn_number: number }>();
 
 	return result.results;
+}
+
+/**
+ * Generate reflections for all agents in a session
+ */
+async function generateAgentReflections(
+	env: Bindings,
+	sessionId: string,
+	sessionSummary: string,
+	topicTitle: string,
+	highlights: string[],
+): Promise<void> {
+	console.log(`[Session Completion] Generating agent reflections for session ${sessionId}`);
+
+	try {
+		// Get all participants
+		const participants = await env.DB.prepare(
+			"SELECT agent_id FROM session_participants WHERE session_id = ?",
+		)
+			.bind(sessionId)
+			.all<{ agent_id: string }>();
+
+		// Generate reflections in parallel
+		const reflectionPromises = participants.results.map(async (participant) => {
+			try {
+				// Get agent data
+				const agent = await env.DB.prepare(
+					"SELECT id, user_id, name, persona, created_at, updated_at FROM agents WHERE id = ?",
+				)
+					.bind(participant.agent_id)
+					.first<Agent>();
+
+				if (!agent) {
+					console.error(
+						`[Session Completion] Agent ${participant.agent_id} not found for reflection`,
+					);
+					return;
+				}
+
+				// Generate reflection
+				const reflection = await generateAgentReflection(
+					env,
+					agent,
+					sessionSummary,
+					topicTitle,
+					highlights,
+				);
+
+				// Save to agent_reflections table
+				const now = getCurrentTimestamp();
+				await env.DB.prepare(
+					`INSERT INTO agent_reflections (id, agent_id, session_id, question, context_summary, created_at)
+					 VALUES (?, ?, ?, ?, ?, ?)`,
+				)
+					.bind(
+						generateUUID(),
+						participant.agent_id,
+						sessionId,
+						reflection.question,
+						reflection.context_summary,
+						now,
+					)
+					.run();
+
+				console.log(`[Session Completion] Reflection generated for agent ${agent.name}`);
+			} catch (error) {
+				console.error(
+					`[Session Completion] Failed to generate reflection for agent ${participant.agent_id}:`,
+					error,
+				);
+				// Swallow error to continue with other agents
+			}
+		});
+
+		await Promise.all(reflectionPromises);
+
+		console.log(`[Session Completion] Agent reflections generated for session ${sessionId}`);
+	} catch (error) {
+		console.error(
+			`[Session Completion] Failed to generate agent reflections for session ${sessionId}:`,
+			error,
+		);
+	}
 }
 
 /**

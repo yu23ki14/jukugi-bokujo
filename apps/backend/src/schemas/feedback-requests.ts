@@ -26,6 +26,15 @@ export const FeedbackRequestSchema = z
 			description: "Unix timestamp (seconds) when session completed",
 			example: 1704067200,
 		}),
+		reflection_id: z.string().uuid().nullable().openapi({
+			description: "Agent reflection ID (if agent generated a question)",
+		}),
+		reflection_question: z.string().nullable().openapi({
+			description: "Agent's question to user",
+		}),
+		reflection_context: z.string().nullable().openapi({
+			description: "Context summary for the agent's question",
+		}),
 	})
 	.openapi("FeedbackRequest");
 
