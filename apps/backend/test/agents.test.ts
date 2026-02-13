@@ -53,6 +53,7 @@ describe("Agents API", () => {
 				user_id TEXT NOT NULL,
 				name TEXT NOT NULL,
 				persona TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'active',
 				created_at INTEGER NOT NULL,
 				updated_at INTEGER NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -60,6 +61,9 @@ describe("Agents API", () => {
 		`).run();
 
 		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)").run();
+		await env.DB.prepare(
+			"CREATE INDEX IF NOT EXISTS idx_agents_user_status ON agents(user_id, status)",
+		).run();
 
 		await env.DB.prepare(`
 			CREATE TABLE IF NOT EXISTS sessions (
@@ -125,6 +129,7 @@ describe("Agents API", () => {
 			expect(data).toHaveProperty("user_id", TEST_USER_ID);
 			expect(data).toHaveProperty("name", "Test Agent");
 			expect(data).toHaveProperty("persona");
+			expect(data).toHaveProperty("status");
 			expect(data).toHaveProperty("created_at");
 
 			// Verify persona structure
@@ -664,6 +669,325 @@ describe("Agents API", () => {
 			expect(response.status).toBe(401);
 			const data = await response.json();
 			expect(data).toHaveProperty("error");
+		});
+	});
+
+	describe("Agent status (active/reserve)", () => {
+		// Use a dedicated user to avoid interference from other tests
+		const STATUS_USER_ID = "status-test-user-001";
+		const statusAuthHeader = `Bearer mock-token-${STATUS_USER_ID}`;
+
+		beforeAll(async () => {
+			const now = Math.floor(Date.now() / 1000);
+			await env.DB.prepare(
+				"INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)",
+			)
+				.bind(STATUS_USER_ID, now, now)
+				.run();
+		});
+
+		describe("Auto-assignment on creation", () => {
+			it("should assign active when slots available and reserve when full", async () => {
+				// First agent should be active
+				const res1 = await SELF.fetch("http://example.com/api/agents", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: statusAuthHeader,
+					},
+					body: JSON.stringify({ name: "Status Active Agent 1" }),
+				});
+				expect(res1.status).toBe(201);
+				const data1 = await res1.json();
+				expect(data1.status).toBe("active");
+
+				// Second agent should also be active (MAX_ACTIVE_AGENTS_PER_USER = 2)
+				const res2 = await SELF.fetch("http://example.com/api/agents", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: statusAuthHeader,
+					},
+					body: JSON.stringify({ name: "Status Active Agent 2" }),
+				});
+				expect(res2.status).toBe(201);
+				const data2 = await res2.json();
+				expect(data2.status).toBe("active");
+
+				// Third agent should be reserve (active slots full)
+				const res3 = await SELF.fetch("http://example.com/api/agents", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: statusAuthHeader,
+					},
+					body: JSON.stringify({ name: "Status Reserve Agent" }),
+				});
+				expect(res3.status).toBe(201);
+				const data3 = await res3.json();
+				expect(data3.status).toBe("reserve");
+			});
+		});
+
+		describe("GET responses include status", () => {
+			it("should include status in list agents response", async () => {
+				const response = await SELF.fetch("http://example.com/api/agents", {
+					method: "GET",
+					headers: { Authorization: statusAuthHeader },
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				for (const agent of data.agents) {
+					expect(agent).toHaveProperty("status");
+					expect(["active", "reserve"]).toContain(agent.status);
+				}
+			});
+
+			it("should include status in get agent detail response", async () => {
+				const agentId = await createTestAgent(authHeader, "Status Detail Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}`, {
+					method: "GET",
+					headers: { Authorization: authHeader },
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				expect(data).toHaveProperty("status");
+				expect(["active", "reserve"]).toContain(data.status);
+			});
+		});
+
+		describe("PATCH /api/agents/:id/status - Update agent status", () => {
+			it("should change status from active to reserve", async () => {
+				const agentId = await createTestAgent(authHeader, "To Reserve Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				expect(data).toHaveProperty("id", agentId);
+				expect(data).toHaveProperty("status", "reserve");
+				expect(data).toHaveProperty("updated_at");
+			});
+
+			it("should change status from reserve to active", async () => {
+				const agentId = await createTestAgent(authHeader, "To Active Agent");
+
+				// First set to reserve
+				await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				// Then set back to active
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "active" }),
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				expect(data).toHaveProperty("status", "active");
+			});
+
+			it("should return 200 when status is already the same", async () => {
+				const agentId = await createTestAgent(authHeader, "Same Status Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "active" }),
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				expect(data).toHaveProperty("status", "active");
+			});
+
+			it("should return 409 when activating and active slots are full", async () => {
+				// Use a dedicated user so we control the slot count
+				const slotUserId = "slot-full-user-001";
+				const slotAuth = `Bearer mock-token-${slotUserId}`;
+				const now = Math.floor(Date.now() / 1000);
+				await env.DB.prepare(
+					"INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)",
+				)
+					.bind(slotUserId, now, now)
+					.run();
+
+				// Create 2 active agents (fills active slots)
+				await createTestAgent(slotAuth, "Slot Agent 1");
+				await createTestAgent(slotAuth, "Slot Agent 2");
+
+				// Create a 3rd agent (will be reserve)
+				const res3 = await SELF.fetch("http://example.com/api/agents", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: slotAuth,
+					},
+					body: JSON.stringify({ name: "Slot Agent 3" }),
+				});
+				expect(res3.status).toBe(201);
+				const agent3 = await res3.json();
+				expect(agent3.status).toBe("reserve");
+
+				// Try to activate the reserve agent - should fail
+				const response = await SELF.fetch(`http://example.com/api/agents/${agent3.id}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: slotAuth,
+					},
+					body: JSON.stringify({ status: "active" }),
+				});
+
+				expect(response.status).toBe(409);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 409 when moving to reserve while in active session", async () => {
+				const sessionUserId = "session-test-user-001";
+				const sessionAuth = `Bearer mock-token-${sessionUserId}`;
+				const now = Math.floor(Date.now() / 1000);
+				await env.DB.prepare(
+					"INSERT OR IGNORE INTO users (id, created_at, updated_at) VALUES (?, ?, ?)",
+				)
+					.bind(sessionUserId, now, now)
+					.run();
+
+				const agentId = await createTestAgent(sessionAuth, "Session Agent");
+
+				// Create a topic and active session with this agent
+				const topicId = "topic-status-test-001";
+				const sessionId = "session-status-test-001";
+				await env.DB.prepare(
+					`INSERT OR IGNORE INTO sessions (id, topic_id, status, current_turn, max_turns, created_at)
+					 VALUES (?, ?, 'active', 1, 10, ?)`,
+				)
+					.bind(sessionId, topicId, now)
+					.run();
+				await env.DB.prepare(
+					`INSERT OR IGNORE INTO session_participants (id, session_id, agent_id, joined_at, speaking_order)
+					 VALUES (?, ?, ?, ?, 1)`,
+				)
+					.bind("sp-status-test-001", sessionId, agentId, now)
+					.run();
+
+				// Try to move to reserve - should fail
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: sessionAuth,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(409);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 404 for non-existent agent", async () => {
+				const fakeId = "00000000-0000-0000-0000-000000000000";
+				const response = await SELF.fetch(`http://example.com/api/agents/${fakeId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(404);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 403 when updating another user's agent", async () => {
+				const otherAgentId = await createTestAgent(otherAuthHeader, "Other Status Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${otherAgentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(403);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 400 for invalid UUID format", async () => {
+				const response = await SELF.fetch("http://example.com/api/agents/invalid-uuid/status", {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(400);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 400 for invalid status value", async () => {
+				const agentId = await createTestAgent(authHeader, "Invalid Status Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: authHeader,
+					},
+					body: JSON.stringify({ status: "invalid" }),
+				});
+
+				expect(response.status).toBe(400);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
+
+			it("should return 401 without authentication", async () => {
+				const agentId = await createTestAgent(authHeader, "Auth Status Agent");
+
+				const response = await SELF.fetch(`http://example.com/api/agents/${agentId}/status`, {
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ status: "reserve" }),
+				});
+
+				expect(response.status).toBe(401);
+				const data = await response.json();
+				expect(data).toHaveProperty("error");
+			});
 		});
 	});
 });
