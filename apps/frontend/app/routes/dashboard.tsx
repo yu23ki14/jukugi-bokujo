@@ -198,9 +198,9 @@ function RanchHeader({
 			</h1>
 			<p className="text-muted-foreground mb-3">今の牧場は「{weather.label}」です</p>
 			<div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-				<span>🐄 エージェント {agentCount}頭</span>
+				<span>🐄 なかま {agentCount}頭</span>
 				<span>📝 進行中の熟議 {activeSessionCount}件</span>
-				<span>💬 フィードバック待ち {feedbackCount}件</span>
+				<span>💬 ふりかえり待ち {feedbackCount}件</span>
 			</div>
 		</div>
 	);
@@ -228,7 +228,7 @@ function RanchLevel({
 			</div>
 			<ProgressBar value={currentLevelXp} max={100} className="h-3 mb-4" />
 			<div className="grid grid-cols-2 gap-4">
-				<ScoreCard label="エージェント数" value={agentCount} color="blue" />
+				<ScoreCard label="なかまの数" value={agentCount} color="blue" />
 				<ScoreCard label="参加議論数" value={completedSessionsTotal} color="green" />
 			</div>
 		</div>
@@ -268,7 +268,7 @@ function RanchAgentList({
 								</div>
 							</div>
 							{feedbackAgentIds.has(agent.id) ? (
-								<StatusBadge variant="feedback">❗ フィードバック待ち</StatusBadge>
+								<StatusBadge variant="feedback">❗ ふりかえり待ち</StatusBadge>
 							) : agent.active_session_count > 0 ? (
 								<StatusBadge variant="active">📝 出張中</StatusBadge>
 							) : (
@@ -295,12 +295,10 @@ function OnboardingView() {
 			<Card>
 				<CardContent className="text-center py-12">
 					<p className="text-4xl mb-4">🐄</p>
-					<h2 className="text-2xl font-bold mb-2">まだ牧場にエージェントがいません</h2>
-					<p className="text-muted-foreground mb-6">
-						AIエージェントを作って、熟議に送り出しましょう
-					</p>
+					<h2 className="text-2xl font-bold mb-2">まだ牧場になかまがいません</h2>
+					<p className="text-muted-foreground mb-6">なかまを迎えて、熟議に送り出しましょう</p>
 					<Button asChild size="lg">
-						<Link to="/agents/new">エージェントを作成する</Link>
+						<Link to="/agents/new">なかまを迎える</Link>
 					</Button>
 				</CardContent>
 			</Card>
@@ -308,9 +306,9 @@ function OnboardingView() {
 			<div>
 				<h3 className="text-lg font-semibold mb-4">はじめかた</h3>
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<StepCard step={1} title="エージェントを作る" description="名前と性格を設定" />
+					<StepCard step={1} title="なかまを迎える" description="名前と性格を設定" />
 					<StepCard step={2} title="知識と方向性を与える" description="あなたの考えを教える" />
-					<StepCard step={3} title="自動で熟議に参加" description="エージェントを観察する" />
+					<StepCard step={3} title="自動で熟議に参加" description="なかまを観察する" />
 				</div>
 			</div>
 		</div>
@@ -493,7 +491,7 @@ function AgentsDashboardView({
 					{activeSessions.length === 0 ? (
 						<EmptyState
 							message="進行中の議論はありません"
-							description={`次のセッションは ${getNextSessionTime()} 頃に始まります`}
+							description={`次の議論は ${getNextSessionTime()} 頃に始まります`}
 						/>
 					) : (
 						<div className="space-y-4 flex flex-col gap-1">

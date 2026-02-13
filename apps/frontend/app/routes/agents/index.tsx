@@ -49,11 +49,11 @@ export default function AgentsIndex() {
 			<div className="-mx-4 -my-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-green-950/20">
 				{/* Ranch Header */}
 				<div className="text-center py-6 px-4">
-					<GradientTitle className="text-2xl mb-1">マイエージェント</GradientTitle>
+					<GradientTitle className="text-2xl mb-1">マイなかま</GradientTitle>
 					<p className="text-muted-foreground">
 						{agents.length > 0
 							? `${agents.length}体のなかまがいます`
-							: "エージェントを迎えて牧場を始めよう"}
+							: "なかまを迎えて牧場を始めよう"}
 					</p>
 				</div>
 
@@ -99,7 +99,7 @@ export default function AgentsIndex() {
 									</span>
 								</div>
 								<p className="text-sm text-muted-foreground mb-4 ml-8">
-									ここにいるなかまが熟議セッションに出場します
+									ここにいるなかまが熟議に出場します
 								</p>
 
 								<div className="grid grid-cols-2 gap-4">
@@ -119,9 +119,7 @@ export default function AgentsIndex() {
 														className="flex-1 text-xs"
 														disabled={isInSession(agent) || statusMutation.isPending}
 														onClick={() => handleStatusChange(agent.id, "reserve")}
-														title={
-															isInSession(agent) ? "セッション参加中は移動できません" : undefined
-														}
+														title={isInSession(agent) ? "議論参加中は移動できません" : undefined}
 													>
 														{isInSession(agent) ? "熟議中..." : "小屋へ"}
 													</Button>
@@ -154,7 +152,7 @@ export default function AgentsIndex() {
 							<div className="max-w-3xl mx-auto">
 								<div className="flex items-center gap-2 mb-1">
 									<span className="text-xl">🏠</span>
-									<h2 className="text-xl font-bold">エージェント小屋</h2>
+									<h2 className="text-xl font-bold">なかま小屋</h2>
 									<span className="text-sm text-muted-foreground ml-1">
 										{reserveAgents.length}体
 									</span>

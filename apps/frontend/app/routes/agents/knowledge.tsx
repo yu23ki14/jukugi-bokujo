@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import {
 	BackLink,
@@ -7,6 +7,7 @@ import {
 	GradientTitle,
 	InfoAlert,
 	LoadingState,
+	StatusBadge,
 } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Button } from "../../components/ui/button";
@@ -21,6 +22,38 @@ import { formatDateTime } from "../../utils/date";
 
 const MAX_SLOTS = 10;
 const SLOT_KEYS = Array.from({ length: MAX_SLOTS }, (_, i) => `gauge-${i}`);
+
+type KnowledgeCategory = "experience" | "data" | "opinion";
+
+const CATEGORIES: { value: KnowledgeCategory; label: string; emoji: string }[] = [
+	{ value: "experience", label: "体験・経験", emoji: "💬" },
+	{ value: "data", label: "データ・事実", emoji: "📊" },
+	{ value: "opinion", label: "意見・主張", emoji: "💡" },
+];
+
+const CATEGORY_HINTS: Record<
+	KnowledgeCategory,
+	{ titlePlaceholder: string; contentPlaceholder: string; examples: string[] }
+> = {
+	experience: {
+		titlePlaceholder: "例: うちの町の交通事情",
+		contentPlaceholder:
+			"あなたの体験や身近なエピソードを教えてください...\n\n例: うちの町ではバスが1日3本しかなくて、高齢者が病院に行くのも大変です。",
+		examples: ["地元で感じたこと", "仕事で経験したこと", "子育てで気づいたこと"],
+	},
+	data: {
+		titlePlaceholder: "例: 地方バス路線の現状",
+		contentPlaceholder:
+			"数字や事実、調査結果などを教えてください...\n\n例: 国土交通省の調査によると、地方のバス路線の約4割が赤字で、過去10年で約1万kmの路線が廃止されています。",
+		examples: ["ニュースで見た統計", "調査レポートの内容", "公式データ"],
+	},
+	opinion: {
+		titlePlaceholder: "例: 公共交通の未来について",
+		contentPlaceholder:
+			"あなたの考えや主張を教えてください...\n\n例: 私は地方の公共交通はオンデマンド型に切り替えるべきだと思います。定時運行にこだわるより、必要な時に呼べる仕組みのほうが効率的です。",
+		examples: ["こうすべきだと思うこと", "賛成・反対の理由", "提案したいアイデア"],
+	},
+};
 
 export function meta() {
 	return [{ title: "知識倉庫 - 熟議牧場" }];
@@ -56,8 +89,18 @@ export default function AgentKnowledge() {
 
 	// Form state
 	const [showForm, setShowForm] = useState(false);
+	const [category, setCategory] = useState<KnowledgeCategory | null>(null);
 	const [title, setTitle] = useState("");
 	const [content, setContent] = useState("");
+	const [addedEffect, setAddedEffect] = useState<string | null>(null);
+
+	// Clear effect after animation
+	useEffect(() => {
+		if (addedEffect) {
+			const timer = setTimeout(() => setAddedEffect(null), 2500);
+			return () => clearTimeout(timer);
+		}
+	}, [addedEffect]);
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -75,21 +118,31 @@ export default function AgentKnowledge() {
 				},
 			});
 
+			const newCount = knowledge.length + 1;
+			setAddedEffect(`知識 ${newCount}/${MAX_SLOTS} — 議論力アップ!`);
 			setTitle("");
 			setContent("");
+			setCategory(null);
 			setShowForm(false);
 			refetchKnowledge();
 		} catch (err) {
-			alert(err instanceof Error ? err.message : "ナレッジの追加に失敗しました");
+			alert(err instanceof Error ? err.message : "知識の追加に失敗しました");
 		}
 	}
+
+	function openFormWithCategory(cat: KnowledgeCategory) {
+		setCategory(cat);
+		setShowForm(true);
+	}
+
+	const hints = category ? CATEGORY_HINTS[category] : null;
 
 	async function handleDelete(knowledgeId: string) {
 		try {
 			await deleteKnowledgeMutation.mutateAsync({ id: knowledgeId });
 			refetchKnowledge();
 		} catch (err) {
-			alert(err instanceof Error ? err.message : "ナレッジの削除に失敗しました");
+			alert(err instanceof Error ? err.message : "知識の削除に失敗しました");
 		}
 	}
 
@@ -145,17 +198,41 @@ export default function AgentKnowledge() {
 									))}
 								</div>
 								<p className="text-xs text-muted-foreground mt-3">
-									タイトル30文字、内容500文字まで。ナレッジは議論の質に影響します。
+									タイトル30文字、内容500文字まで。知識は議論の質に影響します。
 								</p>
 							</CardContent>
 						</Card>
 
-						{/* Add Button */}
+						{/* Effect toast */}
+						{addedEffect && (
+							<div className="mb-4 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+								<Card className="inline-block border-green-400/50 bg-green-50 dark:bg-green-950/30">
+									<CardContent className="py-3 px-6">
+										<p className="text-sm font-bold text-green-700 dark:text-green-400">
+											{addedEffect}
+										</p>
+									</CardContent>
+								</Card>
+							</div>
+						)}
+
+						{/* Category Selection */}
 						{knowledge.length < MAX_SLOTS && !showForm && (
 							<div className="mb-6">
-								<Button className="w-full" size="lg" onClick={() => setShowForm(true)}>
-									知識を追加する
-								</Button>
+								<p className="text-sm font-medium mb-3">どんな知識を教える?</p>
+								<div className="grid grid-cols-3 gap-3">
+									{CATEGORIES.map((cat) => (
+										<button
+											key={cat.value}
+											type="button"
+											onClick={() => openFormWithCategory(cat.value)}
+											className="border rounded-lg p-4 text-center hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors cursor-pointer"
+										>
+											<p className="text-2xl mb-1">{cat.emoji}</p>
+											<p className="text-sm font-semibold">{cat.label}</p>
+										</button>
+									))}
+								</div>
 							</div>
 						)}
 
@@ -163,18 +240,69 @@ export default function AgentKnowledge() {
 						{showForm && (
 							<Card className="mb-6 overflow-hidden">
 								<div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 px-6 py-3 border-b">
-									<p className="text-sm font-bold tracking-wider text-blue-700 dark:text-blue-400">
-										新しい知識
-									</p>
+									<div className="flex items-center justify-between">
+										<p className="text-sm font-bold tracking-wider text-blue-700 dark:text-blue-400">
+											新しい知識
+										</p>
+										{category && (
+											<StatusBadge variant="info">
+												{CATEGORIES.find((c) => c.value === category)?.emoji}{" "}
+												{CATEGORIES.find((c) => c.value === category)?.label}
+											</StatusBadge>
+										)}
+									</div>
 								</div>
 								<CardContent className="pt-4">
+									{/* Category switcher */}
+									{!category && (
+										<div className="mb-4">
+											<p className="text-sm text-muted-foreground mb-2">
+												カテゴリを選ぶと書きやすくなります
+											</p>
+											<div className="flex gap-2">
+												{CATEGORIES.map((cat) => (
+													<Button
+														key={cat.value}
+														type="button"
+														variant="outline"
+														size="sm"
+														onClick={() => setCategory(cat.value)}
+													>
+														{cat.emoji} {cat.label}
+													</Button>
+												))}
+											</div>
+										</div>
+									)}
+
+									{/* Hint examples */}
+									{hints && (
+										<div className="mb-4 p-3 bg-muted/50 rounded-md">
+											<p className="text-xs font-semibold text-muted-foreground mb-1">
+												こんなことを書いてみよう
+											</p>
+											<div className="flex flex-wrap gap-1.5">
+												{hints.examples.map((ex) => (
+													<span
+														key={ex}
+														className="text-xs bg-background border rounded-full px-2.5 py-0.5 text-muted-foreground"
+													>
+														{ex}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+
 									<form onSubmit={handleSubmit}>
 										<FormField
 											label="タイトル"
 											name="title"
 											value={title}
 											onChange={(v) => setTitle(v)}
-											placeholder="例: 気候変動の基礎知識、経済政策の要点"
+											placeholder={
+												hints?.titlePlaceholder || "例: うちの町のこと、最近気になったニュース"
+											}
 											maxLength={30}
 											disabled={createKnowledgeMutation.isPending}
 											required
@@ -186,7 +314,7 @@ export default function AgentKnowledge() {
 											type="textarea"
 											value={content}
 											onChange={(v) => setContent(v)}
-											placeholder="なかまに覚えさせたい知識を入力..."
+											placeholder={hints?.contentPlaceholder || "なかまに覚えさせたい知識を入力..."}
 											maxLength={500}
 											disabled={createKnowledgeMutation.isPending}
 											required
@@ -208,6 +336,7 @@ export default function AgentKnowledge() {
 												variant="secondary"
 												onClick={() => {
 													setShowForm(false);
+													setCategory(null);
 													setTitle("");
 													setContent("");
 												}}
@@ -222,12 +351,22 @@ export default function AgentKnowledge() {
 						)}
 
 						{/* Knowledge List */}
-						{knowledge.length === 0 ? (
+						{knowledge.length === 0 && !showForm ? (
 							<div className="text-center py-12 bg-muted/50 rounded-xl">
 								<p className="text-4xl mb-3">📦</p>
 								<p className="text-lg font-medium text-foreground mb-2">倉庫はまだ空っぽ</p>
 								<p className="text-muted-foreground mb-4">知識を与えて議論力を高めよう!</p>
-								<Button onClick={() => setShowForm(true)}>最初の知識を追加</Button>
+								<div className="flex justify-center gap-2">
+									{CATEGORIES.map((cat) => (
+										<Button
+											key={cat.value}
+											variant="outline"
+											onClick={() => openFormWithCategory(cat.value)}
+										>
+											{cat.emoji} {cat.label}
+										</Button>
+									))}
+								</div>
 							</div>
 						) : (
 							<div className="space-y-3">
@@ -254,7 +393,7 @@ export default function AgentKnowledge() {
 															削除
 														</Button>
 													}
-													title="ナレッジを削除"
+													title="知識を削除"
 													description={`「${entry.title}」を削除しますか？この操作は取り消せません。`}
 													confirmLabel="削除"
 													cancelLabel="やめる"

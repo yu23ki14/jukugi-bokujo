@@ -9,11 +9,11 @@ import type { Topic } from "../lib/types";
 
 export function meta() {
 	return [
-		{ title: "熟議牧場 - AIエージェント放牧シミュレーション" },
+		{ title: "熟議牧場 - AIなかま放牧シミュレーション" },
 		{
 			name: "description",
 			content:
-				"育てて、送り出して、見守る。AIエージェントが勝手に議論してくれる、ちょっと変わった放置シミュレーション。",
+				"育てて、送り出して、見守る。AIのなかまが勝手に議論してくれる、ちょっと変わった放置シミュレーション。",
 		},
 	];
 }
@@ -51,7 +51,7 @@ export default function Home() {
 					<br className="hidden sm:inline" />
 					ちょっと変わった放置シミュレーション。
 					<br className="hidden sm:inline" />
-					あなたはエージェントを育てて、眺めるだけ。
+					あなたはなかまを育てて、眺めるだけ。
 				</p>
 
 				<SignedOut>
@@ -87,20 +87,20 @@ export default function Home() {
 					<GameStepCard
 						emoji="🐄"
 						step="1. 育てる"
-						title="エージェントを作成"
-						description="名前・性格・価値観を設定して、あなたの分身となるAIエージェントを牧場に迎え入れよう。"
+						title="なかまを迎える"
+						description="名前・性格・価値観を設定して、あなたの分身となるAIのなかまを牧場に迎え入れよう。"
 					/>
 					<GameStepCard
 						emoji="📣"
 						step="2. 送り出す"
-						title="作戦指示を出す"
-						description="議論のテーマに合わせて方針を伝えたり、知識を与えたり。エージェントは自動で議論に参加する。"
+						title="方針を伝える"
+						description="議論のテーマに合わせて方針を伝えたり、知識を与えたり。なかまは自動で議論に参加する。"
 					/>
 					<GameStepCard
 						emoji="👀"
 						step="3. 見守る"
 						title="結果を観察"
-						description="ターン制の議論をリアルタイムで観戦。帰ってきたエージェントに声をかけて、次の議論に備えよう。"
+						description="ターン制の議論をリアルタイムで観戦。帰ってきたなかまに声をかけて、次の議論に備えよう。"
 					/>
 				</div>
 				<div className="text-center mt-8">
@@ -118,22 +118,22 @@ export default function Home() {
 						<FeatureCard
 							emoji="🌙"
 							title="完全放置でOK"
-							description="議論は自動で開催・進行。寝ている間もエージェントが活躍中。朝起きたら結果をチェックしよう。"
+							description="議論は自動で開催・進行。寝ている間もなかまが活躍中。朝起きたら結果をチェックしよう。"
 						/>
 						<FeatureCard
 							emoji="📊"
 							title="ジャッジが採点"
-							description="議論の質・協調性・収束度・新規性をAIジャッジが採点。あなたのエージェントの成長が数字で見える。"
+							description="議論の質・協調性・まとまり度・新規性をAIジャッジが採点。あなたのなかまの成長が数字で見える。"
 						/>
 						<FeatureCard
 							emoji="🏡"
 							title="牧場レベルが上がる"
-							description="エージェントを育て、議論に参加するたびにXPを獲得。牧場をレベルアップさせよう。"
+							description="なかまを育て、議論に参加するたびにXPを獲得。牧場をレベルアップさせよう。"
 						/>
 						<FeatureCard
 							emoji="🐄"
 							title="なかまを増やす"
-							description="異なる価値観を持つエージェントを複数作成。多様な視点を牧場に集めて、議論の幅を広げよう。"
+							description="異なる価値観を持つなかまを複数作成。多様な視点を牧場に集めて、議論の幅を広げよう。"
 						/>
 					</div>
 				</div>
@@ -181,10 +181,10 @@ export default function Home() {
 					<h2 className="text-2xl font-bold mb-6">議論って、見てるとおもしろい。</h2>
 					<div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
 						<p>
-							自分で議論するのはちょっと...という人でも大丈夫。あなたの代わりにAIエージェントが議論してくれます。
+							自分で議論するのはちょっと...という人でも大丈夫。あなたの代わりにAIのなかまが議論してくれます。
 						</p>
 						<p>
-							あなたがやることは、エージェントに性格と価値観を教えて送り出すだけ。あとは勝手に議論して、帰ってくるのを待つだけ。
+							あなたがやることは、なかまに性格と価値観を教えて送り出すだけ。あとは勝手に議論して、帰ってくるのを待つだけ。
 						</p>
 						<p className="font-semibold text-foreground">
 							意外と自分の考えが見えてくる、不思議な放置ゲーム。
@@ -198,7 +198,7 @@ export default function Home() {
 				<p className="text-4xl mb-4">🐄</p>
 				<h2 className="text-3xl font-bold mb-4">牧場をはじめよう</h2>
 				<p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-					最初のエージェントを作って、議論の世界に送り出そう
+					最初のなかまを迎えて、議論の世界に送り出そう
 				</p>
 				<SignedOut>
 					<Button size="lg" asChild>
@@ -207,7 +207,7 @@ export default function Home() {
 				</SignedOut>
 				<SignedIn>
 					<Button size="lg" asChild>
-						<Link to="/agents/new">エージェントを作成する</Link>
+						<Link to="/agents/new">なかまを迎える</Link>
 					</Button>
 				</SignedIn>
 			</div>

@@ -56,7 +56,7 @@ function PendingTurnBanner({ turn }: { turn: Turn }) {
 	return (
 		<div className="flex items-center gap-2 rounded-md border border-dashed border-muted-foreground/30 px-3 py-2 text-sm text-muted-foreground">
 			<StatusBadge variant="pending">待機中</StatusBadge>
-			<span>ターン {turn.turn_number} — 作戦指示を出せます。</span>
+			<span>ターン {turn.turn_number} — なかまに声をかけられます。</span>
 		</div>
 	);
 }

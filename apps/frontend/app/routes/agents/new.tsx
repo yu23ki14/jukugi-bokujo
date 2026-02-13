@@ -98,7 +98,7 @@ export default function NewAgent() {
 			}
 		} catch (err) {
 			setPhase("form");
-			setError(err instanceof Error ? err.message : "エージェントの作成に失敗しました");
+			setError(err instanceof Error ? err.message : "なかまの作成に失敗しました");
 		}
 	}
 
@@ -121,7 +121,7 @@ export default function NewAgent() {
 							>
 								🥚
 							</p>
-							<p className="text-xl font-bold mb-2">ペルソナ生成中...</p>
+							<p className="text-xl font-bold mb-2">性格を考え中...</p>
 							<p className="text-muted-foreground">AIが「{name}」の性格を考えています</p>
 							<div className="flex justify-center gap-1 mt-4">
 								{[0, 1, 2].map((i) => (
@@ -192,7 +192,9 @@ export default function NewAgent() {
 								)}
 								{persona.core_values.length > 0 && (
 									<div>
-										<p className="text-xs font-semibold text-muted-foreground mb-1">コアバリュー</p>
+										<p className="text-xs font-semibold text-muted-foreground mb-1">
+											大事にしていること
+										</p>
 										<div className="flex flex-wrap gap-1.5">
 											{persona.core_values.map((v) => (
 												<StatusBadge key={v} variant="info">
@@ -236,7 +238,7 @@ export default function NewAgent() {
 					<p className="text-5xl mb-3">🥚</p>
 					<GradientTitle className="text-3xl mb-2">新しいなかまを迎える</GradientTitle>
 					<p className="text-muted-foreground">
-						名前を決めると、AIが独自のペルソナを生成します
+						名前を決めると、AIが独自の性格を考えます
 						<br />
 						どんな性格のなかまが来るかはお楽しみ!
 					</p>

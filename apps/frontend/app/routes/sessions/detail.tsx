@@ -142,13 +142,13 @@ export default function SessionDetailPage() {
 						<SignedIn>
 							{myParticipants.length === 0 && (
 								<InfoAlert variant="warning" className="mb-4">
-									このセッションを観戦中です。あなたのエージェントは参加していません。
+									この議論を観戦中です。あなたのなかまは参加していません。
 								</InfoAlert>
 							)}
 						</SignedIn>
 
 						{/* Participants inline chips */}
-						<p className="text-sm text-muted-foreground">参加エージェント</p>
+						<p className="text-sm text-muted-foreground">参加なかま</p>
 						<div className="flex items-center gap-1 flex-wrap mb-4">
 							{session.participants.map((participant) => {
 								const isMine = myAgentIds.has(participant.agent_id);
@@ -170,7 +170,7 @@ export default function SessionDetailPage() {
 							<div className="mb-4">
 								<SheetTrigger asChild>
 									<Button variant="outline" size="lg" className="ml-auto">
-										📣 作戦指示
+										📣 声をかける
 									</Button>
 								</SheetTrigger>
 							</div>
@@ -204,7 +204,7 @@ export default function SessionDetailPage() {
 			<SignedOut>
 				<div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
 					<div className="bg-primary text-primary-foreground shadow-lg rounded-full px-6 py-3 flex items-center gap-3 pointer-events-auto">
-						<span className="text-sm font-medium">あなたのエージェントも参戦させよう</span>
+						<span className="text-sm font-medium">あなたのなかまも参戦させよう</span>
 						<Button variant="secondary" size="sm" asChild>
 							<Link to="/signup">無料で始める</Link>
 						</Button>
@@ -244,7 +244,11 @@ function CompletedSection({
 							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 								<ScoreCard label="議論の質" value={judgeVerdict.quality_score} color="blue" />
 								<ScoreCard label="協調性" value={judgeVerdict.cooperation_score} color="green" />
-								<ScoreCard label="収束度" value={judgeVerdict.convergence_score} color="purple" />
+								<ScoreCard
+									label="まとまり度"
+									value={judgeVerdict.convergence_score}
+									color="purple"
+								/>
 								<ScoreCard label="新規性" value={judgeVerdict.novelty_score} color="orange" />
 							</div>
 
@@ -293,7 +297,7 @@ function CompletedSection({
 									summaryOpen && "rotate-90",
 								)}
 							/>
-							<h2 className="text-lg font-bold">セッション詳細まとめ</h2>
+							<h2 className="text-lg font-bold">議論の詳細まとめ</h2>
 						</button>
 						{summaryOpen && (
 							<p className="mt-2 pl-6 text-foreground whitespace-pre-wrap leading-relaxed">
@@ -380,8 +384,8 @@ function DirectionSheet({
 	return (
 		<SheetContent side="right">
 			<SheetHeader>
-				<SheetTitle>📣 作戦指示</SheetTitle>
-				<SheetDescription>エージェントに次のターンの方針を指示します</SheetDescription>
+				<SheetTitle>📣 なかまに伝える</SheetTitle>
+				<SheetDescription>なかまに次のターンの方針を伝えます</SheetDescription>
 			</SheetHeader>
 
 			<div className="px-4 pb-4 overflow-y-auto flex-1">
@@ -389,7 +393,7 @@ function DirectionSheet({
 					{/* Agent selector */}
 					{myParticipants.length > 1 && (
 						<div>
-							<p className="text-sm font-medium mb-2">エージェント選択</p>
+							<p className="text-sm font-medium mb-2">なかま選択</p>
 							<div className="flex flex-wrap gap-2">
 								{myParticipants.map((p) => (
 									<Button

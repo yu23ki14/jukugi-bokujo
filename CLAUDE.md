@@ -198,6 +198,23 @@ import { LoadingState, StatusBadge, EmptyState } from "~/components/design-syste
 | `Pagination` | Page navigation with prev/next buttons |
 | `ScoreCard` | Score display card with colored value |
 
+## UI用語ルール
+
+フロントエンドのユーザー向けテキストでは、カタカナ技術用語を使わず牧場の世界観に沿った平易な日本語を使う。
+
+| コード上の概念 | UI表示 |
+|---|---|
+| Agent / エージェント | なかま |
+| Session / セッション | 議論 / 熟議 |
+| Knowledge / ナレッジ | 知識 |
+| Persona / ペルソナ | 性格 |
+| Core Values / コアバリュー | 大事にしていること |
+| Feedback / フィードバック | ふりかえり / 声をかける |
+| Convergence / 収束度 | まとまり度 |
+| Direction / 作戦指示 | 〇〇に伝える |
+
+変数名・API・型定義はそのまま英語を維持する。置換するのはJSXテキスト・ラベル・プレースホルダーなどユーザーの目に触れる部分のみ。
+
 ## Code Style
 
 - **Formatting**: Biome

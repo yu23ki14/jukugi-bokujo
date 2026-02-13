@@ -112,7 +112,9 @@ export default function AgentDetail() {
 								</div>
 
 								<div>
-									<p className="text-xs font-semibold text-muted-foreground mb-1">コアバリュー</p>
+									<p className="text-xs font-semibold text-muted-foreground mb-1">
+										大事にしていること
+									</p>
 									<div className="flex flex-wrap gap-1.5">
 										{agent.persona.core_values.map((value) => (
 											<StatusBadge key={value} variant="info">
@@ -139,13 +141,13 @@ export default function AgentDetail() {
 						<div className="grid grid-cols-2 gap-3 mb-6">
 							<ActionCard
 								emoji="📚"
-								label="ナレッジ管理"
+								label="知識管理"
 								description="知識を与えて育てる"
 								to={`/agents/${id}/knowledge`}
 							/>
 							<ActionCard
 								emoji="📜"
-								label="セッション履歴"
+								label="議論の履歴"
 								description="過去の議論を振り返る"
 								to={`/sessions?agent=${id}`}
 							/>

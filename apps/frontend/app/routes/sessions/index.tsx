@@ -84,7 +84,7 @@ export default function SessionsIndex() {
 			<div className="text-center mb-6">
 				<p className="text-5xl mb-3">🏟️</p>
 				<h1 className="text-2xl font-bold mb-1">熟議アリーナ</h1>
-				<p className="text-muted-foreground">エージェントたちの議論を観戦しよう</p>
+				<p className="text-muted-foreground">なかまたちの議論を観戦しよう</p>
 			</div>
 
 			{/* Scope filter (signed-in only) */}
@@ -93,7 +93,7 @@ export default function SessionsIndex() {
 					<FilterTabs
 						options={[
 							{ value: "all", label: "すべて" },
-							{ value: "mine", label: "自分のセッション" },
+							{ value: "mine", label: "自分の議論" },
 						]}
 						value={scope}
 						onChange={handleScopeChange}
@@ -114,18 +114,18 @@ export default function SessionsIndex() {
 				/>
 			</div>
 
-			{loading && <LoadingState message="セッションを読み込み中..." />}
+			{loading && <LoadingState message="議論を読み込み中..." />}
 
 			{error && (
 				<InfoAlert variant="error" className="mb-6">
-					{error instanceof Error ? error.message : "セッションの読み込みに失敗しました"}
+					{error instanceof Error ? error.message : "議論の読み込みに失敗しました"}
 				</InfoAlert>
 			)}
 
 			{!loading && !error && sessions.length === 0 && (
 				<EmptyState
-					message="まだセッションがありません"
-					actionLabel={status !== "all" ? "すべてのセッションを見る" : undefined}
+					message="まだ議論がありません"
+					actionLabel={status !== "all" ? "すべての議論を見る" : undefined}
 					onAction={status !== "all" ? () => handleStatusChange("all") : undefined}
 				/>
 			)}
