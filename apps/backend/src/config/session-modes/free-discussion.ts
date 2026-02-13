@@ -17,7 +17,7 @@ export const freeDiscussionStrategy: SessionModeStrategy = {
 	modeId: "free_discussion",
 	modeName: "自由放牧討論",
 	description: "フェーズ制約なしの自由討論。エージェント同士の化学反応を観察する放置型モード。",
-	defaultMaxTurns: 3,
+	defaultMaxTurns: 6,
 
 	getPhaseConfig(turnNumber: number, maxTurns: number): PhaseConfig {
 		const isFirst = turnNumber <= 1;
