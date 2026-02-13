@@ -159,6 +159,50 @@ export const SUMMARY_MIN_TURN = 0;
 // Queue Configuration
 // ============================================================================
 
+// ============================================================================
+// Agent Value Options
+// ============================================================================
+
+/**
+ * Available value options for agent creation
+ * Users select REQUIRED_VALUES_COUNT values from this list
+ */
+export const AGENT_VALUE_OPTIONS = [
+	"公平",
+	"共感",
+	"平和",
+	"多様性",
+	"思いやり",
+	"感謝",
+	"誠実",
+	"希望",
+	"効率",
+	"伝統",
+	"自由",
+	"好奇心",
+	"忍耐",
+	"自立",
+	"挑戦",
+	"冷静",
+	"本音主義",
+	"損得勘定",
+	"負けず嫌い",
+	"疑い深さ",
+	"皮肉屋",
+	"野心",
+	"頑固",
+	"毒舌",
+] as const;
+
+/**
+ * Number of values a user must select when creating an agent
+ */
+export const REQUIRED_VALUES_COUNT = 3;
+
+// ============================================================================
+// Queue Configuration
+// ============================================================================
+
 /**
  * Maximum retries for failed API calls (before queue retry)
  */

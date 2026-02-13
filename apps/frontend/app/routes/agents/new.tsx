@@ -6,6 +6,7 @@ import {
 	FormField,
 	GradientTitle,
 	InfoAlert,
+	ProgressBar,
 	StatusBadge,
 } from "../../components/design-system";
 import { ProtectedRoute } from "../../components/ProtectedRoute";
@@ -16,8 +17,38 @@ import {
 	getGetApiAgentsQueryKey,
 	usePostApiAgents,
 } from "../../hooks/backend";
+import { cn } from "../../lib/utils";
 
-type Phase = "form" | "generating" | "reveal";
+const AGENT_VALUE_OPTIONS = [
+	{ label: "公平", emoji: "⚖️" },
+	{ label: "共感", emoji: "💞" },
+	{ label: "平和", emoji: "☮️" },
+	{ label: "多様性", emoji: "🌈" },
+	{ label: "思いやり", emoji: "🫶" },
+	{ label: "感謝", emoji: "🙏" },
+	{ label: "誠実", emoji: "💎" },
+	{ label: "希望", emoji: "🌟" },
+	{ label: "効率", emoji: "⚡" },
+	{ label: "伝統", emoji: "🏯" },
+	{ label: "自由", emoji: "🕊️" },
+	{ label: "好奇心", emoji: "🔍" },
+	{ label: "忍耐", emoji: "🪨" },
+	{ label: "自立", emoji: "🧍" },
+	{ label: "挑戦", emoji: "🔥" },
+	{ label: "冷静", emoji: "🧊" },
+	{ label: "本音主義", emoji: "🎭" },
+	{ label: "損得勘定", emoji: "💰" },
+	{ label: "負けず嫌い", emoji: "🔥" },
+	{ label: "疑い深さ", emoji: "🔮" },
+	{ label: "皮肉屋", emoji: "🃏" },
+	{ label: "野心", emoji: "🦊" },
+	{ label: "頑固", emoji: "🧱" },
+	{ label: "毒舌", emoji: "👅" },
+] as const;
+
+const REQUIRED_VALUES_COUNT = 3;
+
+type Phase = "form" | "values" | "generating" | "reveal";
 
 export function meta() {
 	return [{ title: "なかまを迎える - 熟議牧場" }];
@@ -27,6 +58,7 @@ export default function NewAgent() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
+	const [selectedValues, setSelectedValues] = useState<string[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>("form");
 	const [createdAgent, setCreatedAgent] = useState<CreateAgentResponse | null>(null);
@@ -82,22 +114,42 @@ export default function NewAgent() {
 		}
 	}, [phase, createdAgent, navigate]);
 
-	async function handleSubmit(e: React.FormEvent) {
+	function handleNameSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!name.trim()) {
 			setError("なかまの名前を入力してください");
 			return;
 		}
+		setError(null);
+		setPhase("values");
+	}
+
+	function toggleValue(value: string) {
+		setSelectedValues((prev) => {
+			if (prev.includes(value)) {
+				return prev.filter((v) => v !== value);
+			}
+			if (prev.length >= REQUIRED_VALUES_COUNT) {
+				return prev;
+			}
+			return [...prev, value];
+		});
+	}
+
+	async function handleValuesSubmit() {
+		if (selectedValues.length !== REQUIRED_VALUES_COUNT) return;
 		try {
 			setError(null);
 			setPhase("generating");
-			const response = await createAgentMutation.mutateAsync({ data: { name: name.trim() } });
+			const response = await createAgentMutation.mutateAsync({
+				data: { name: name.trim(), values: selectedValues },
+			});
 			if (response.data && "id" in response.data) {
 				setCreatedAgent(response.data);
 				setPhase("reveal");
 			}
 		} catch (err) {
-			setPhase("form");
+			setPhase("values");
 			setError(err instanceof Error ? err.message : "なかまの作成に失敗しました");
 		}
 	}
@@ -183,6 +235,10 @@ export default function NewAgent() {
 								<p className="text-lg text-muted-foreground">が牧場にやってきた!</p>
 							</div>
 
+							<p className="text-center text-sm text-muted-foreground mb-4">
+								あなたの気持ち、ちゃんと届いたみたい!
+							</p>
+
 							<div className="space-y-3 text-left bg-muted/50 rounded-lg p-4">
 								{persona.thinking_style && (
 									<div>
@@ -197,7 +253,10 @@ export default function NewAgent() {
 										</p>
 										<div className="flex flex-wrap gap-1.5">
 											{persona.core_values.map((v) => (
-												<StatusBadge key={v} variant="info">
+												<StatusBadge
+													key={v}
+													variant={selectedValues.includes(v) ? "direction" : "info"}
+												>
 													{v}
 												</StatusBadge>
 											))}
@@ -228,6 +287,94 @@ export default function NewAgent() {
 		);
 	}
 
+	if (phase === "values") {
+		return (
+			<ProtectedRoute>
+				<div className="max-w-2xl mx-auto">
+					<BackLink to="/agents" label="牧場に戻る" />
+
+					<div className="text-center mb-8">
+						<p className="text-5xl mb-3">💭</p>
+						<GradientTitle className="text-3xl mb-2">大切にしていること</GradientTitle>
+						<p className="text-muted-foreground">
+							「{name}」に大切にしてほしいことを{REQUIRED_VALUES_COUNT}つ選んでね
+						</p>
+					</div>
+
+					<Card>
+						<CardContent>
+							<div className="mb-4">
+								<div className="flex items-center justify-between mb-2">
+									<p className="text-sm font-medium">
+										{selectedValues.length} / {REQUIRED_VALUES_COUNT}
+									</p>
+								</div>
+								<ProgressBar
+									value={selectedValues.length}
+									max={REQUIRED_VALUES_COUNT}
+									colorScheme="green"
+									size="sm"
+								/>
+							</div>
+
+							<div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+								{AGENT_VALUE_OPTIONS.map(({ label, emoji }) => {
+									const isSelected = selectedValues.includes(label);
+									const isDisabled = !isSelected && selectedValues.length >= REQUIRED_VALUES_COUNT;
+									return (
+										<Button
+											key={label}
+											type="button"
+											variant={isSelected ? "default" : "outline"}
+											className={cn("h-auto py-3 text-base", isDisabled && "opacity-50")}
+											disabled={isDisabled}
+											onClick={() => toggleValue(label)}
+										>
+											{emoji} {label}
+										</Button>
+									);
+								})}
+							</div>
+
+							{error && (
+								<InfoAlert variant="error" className="mb-4">
+									<p>{error}</p>
+								</InfoAlert>
+							)}
+
+							<div className="flex gap-4">
+								<Button
+									type="button"
+									size="lg"
+									disabled={
+										selectedValues.length !== REQUIRED_VALUES_COUNT || createAgentMutation.isPending
+									}
+									className="flex-1"
+									onClick={handleValuesSubmit}
+								>
+									この子に教える!
+								</Button>
+								<Button
+									type="button"
+									variant="secondary"
+									size="lg"
+									onClick={() => {
+										setPhase("form");
+										setSelectedValues([]);
+										setError(null);
+									}}
+									disabled={createAgentMutation.isPending}
+								>
+									もどる
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			</ProtectedRoute>
+		);
+	}
+
 	return (
 		<ProtectedRoute>
 			<div className="max-w-2xl mx-auto">
@@ -238,23 +385,22 @@ export default function NewAgent() {
 					<p className="text-5xl mb-3">🥚</p>
 					<GradientTitle className="text-3xl mb-2">新しいなかまを迎える</GradientTitle>
 					<p className="text-muted-foreground">
-						名前を決めると、AIが独自の性格を考えます
+						名前を決めて、大切にしてほしいことを選びましょう
 						<br />
-						どんな性格のなかまが来るかはお楽しみ!
+						あなたの気持ちを知っているなかまが生まれます
 					</p>
 				</div>
 
 				<Card>
 					<CardContent>
-						<form onSubmit={handleSubmit}>
+						<form onSubmit={handleNameSubmit}>
 							<FormField
 								label="なまえ"
 								name="name"
 								value={name}
 								onChange={(v) => setName(v)}
-								placeholder="例: 環境活動家タロウ、テクノロジー推進派..."
+								placeholder="例: オードリー・タン2号、大阪のおばちゃん..."
 								maxLength={20}
-								disabled={createAgentMutation.isPending}
 								helperText="名前がなかまの性格に影響します"
 							/>
 
@@ -265,20 +411,14 @@ export default function NewAgent() {
 							)}
 
 							<div className="flex gap-4 mt-6">
-								<Button
-									type="submit"
-									size="lg"
-									disabled={createAgentMutation.isPending || !name.trim()}
-									className="flex-1"
-								>
-									なかまを生み出す
+								<Button type="submit" size="lg" disabled={!name.trim()} className="flex-1">
+									つぎへ
 								</Button>
 								<Button
 									type="button"
 									variant="secondary"
 									size="lg"
 									onClick={() => navigate("/agents")}
-									disabled={createAgentMutation.isPending}
 								>
 									やめる
 								</Button>
