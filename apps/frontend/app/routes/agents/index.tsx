@@ -49,7 +49,7 @@ export default function AgentsIndex() {
 			<div className="-mx-4 -my-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-green-950/20">
 				{/* Ranch Header */}
 				<div className="text-center py-6 px-4">
-					<GradientTitle className="text-2xl mb-1">マイなかま</GradientTitle>
+					<GradientTitle className="text-2xl mb-1">なかまたち</GradientTitle>
 					<p className="text-muted-foreground">
 						{agents.length > 0
 							? `${agents.length}体のなかまがいます`
