@@ -124,7 +124,7 @@ agents.openapi(createAgentRoute, async (c) => {
 		const status: AgentStatus = activeCount < MAX_ACTIVE_AGENTS_PER_USER ? "active" : "reserve";
 
 		// Generate initial persona using LLM
-		const persona = await generateInitialPersona(c.env, body.name.trim());
+		const persona = await generateInitialPersona(c.env, body.name.trim(), body.values);
 
 		// Create agent
 		const agentId = generateUUID();

@@ -154,7 +154,7 @@ export default function Home() {
 					) : topics.length === 0 ? (
 						<EmptyState message="現在アクティブな議論はありません" />
 					) : (
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+						<div className="grid grid-cols-1 gap-6">
 							{topics.map((topic) => (
 								<Link key={topic.id} to={`/topics/${topic.id}`}>
 									<Card className="hover:shadow-lg transition">

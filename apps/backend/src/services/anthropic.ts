@@ -147,10 +147,14 @@ export async function callAnthropicAPI(
 export async function generateInitialPersona(
 	env: Bindings,
 	agentName: string,
+	userValues: readonly string[],
 ): Promise<AgentPersona> {
 	const systemPrompt = "あなたはAI熟議エージェントの人格を生成する専門家です。";
 
 	const userPrompt = `「${agentName}」という名前の熟議エージェントの初期人格を生成してください。
+
+ユーザーが選んだ大切にしている価値観: ${userValues.join("、")}
+重要な制約: core_valuesにはユーザーが選んだ価値観を必ず含めてください。
 
 以下のJSON形式で出力してください：
 {
@@ -193,12 +197,19 @@ JSONのみを出力し、他の説明は不要です。`;
 		// Ensure version is set
 		persona.version = 1;
 
+		// Ensure user-selected values are included in core_values
+		for (const val of userValues) {
+			if (!persona.core_values.includes(val)) {
+				persona.core_values.unshift(val);
+			}
+		}
+
 		return persona;
 	} catch (error) {
 		console.error("Failed to generate persona:", error);
 		// Return default persona if generation fails
 		return {
-			core_values: ["公平性", "持続可能性", "対話重視"],
+			core_values: [...userValues],
 			thinking_style: "論理的で慎重、多様な視点を尊重する",
 			personality_traits: ["思慮深い", "協調的", "柔軟"],
 			background: "様々な社会課題に関心を持つ市民",

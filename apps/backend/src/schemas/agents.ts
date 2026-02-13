@@ -3,6 +3,7 @@
  */
 
 import { z } from "@hono/zod-openapi";
+import { AGENT_VALUE_OPTIONS, REQUIRED_VALUES_COUNT } from "../config/constants";
 
 /**
  * Agent status enum schema
@@ -49,6 +50,13 @@ export const CreateAgentRequestSchema = z
 			description: "Agent name",
 			example: "My First Agent",
 		}),
+		values: z
+			.array(z.enum(AGENT_VALUE_OPTIONS))
+			.length(REQUIRED_VALUES_COUNT)
+			.openapi({
+				description: `User-selected core values (exactly ${REQUIRED_VALUES_COUNT})`,
+				example: ["公平性", "共感", "革新"],
+			}),
 	})
 	.openapi("CreateAgentRequest");
 

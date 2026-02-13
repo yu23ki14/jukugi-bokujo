@@ -144,6 +144,8 @@ export interface CreateAgentRequest {
    * @maxLength 100
    */
   name: string;
+  /** User-selected core values (exactly 3) */
+  values: string[];
 }
 
 export interface AgentSummary {
