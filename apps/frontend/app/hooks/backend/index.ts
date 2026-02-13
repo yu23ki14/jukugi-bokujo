@@ -297,6 +297,11 @@ export interface ListDirectionsResponse {
   directions: Direction[];
 }
 
+export interface PersonaChangeData {
+  persona_before: string;
+  persona_after: string;
+}
+
 export interface CreateFeedbackResponse {
   /** Feedback ID */
   id: string;
@@ -308,17 +313,21 @@ export interface CreateFeedbackResponse {
   content: string;
   /** Unix timestamp (seconds) when created */
   created_at: number;
+  /** Persona change if update was applied */
+  persona_change: PersonaChangeData | null;
 }
 
 export interface CreateFeedbackRequest {
   /** Session ID to provide feedback for */
   session_id: string;
   /**
-   * Feedback content (max 400 characters)
+   * Feedback content (max 200 characters)
    * @minLength 1
-   * @maxLength 400
+   * @maxLength 200
    */
   content: string;
+  /** ID of the agent reflection this feedback responds to */
+  reflection_id?: string;
 }
 
 export interface Feedback {
@@ -3216,6 +3225,9 @@ export interface FeedbackRequest {
   session_id: string;
   topic_title: string;
   completed_at: number;
+  reflection_id: string | null;
+  reflection_question: string | null;
+  reflection_context: string | null;
 }
 
 export interface ListFeedbackRequestsResponse {
@@ -3288,6 +3300,106 @@ export function useGetApiFeedbackRequests<TData = Awaited<ReturnType<typeof getA
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetApiFeedbackRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// ============================================================================
+// Persona Changes (manually added)
+// ============================================================================
+
+export interface PersonaChangeEntry {
+  id: string;
+  agent_id: string;
+  feedback_id: string;
+  persona_before: string;
+  persona_after: string;
+  created_at: number;
+}
+
+export interface ListPersonaChangesResponse {
+  persona_changes: PersonaChangeEntry[];
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponse200 = {
+  data: ListPersonaChangesResponse
+  status: 200
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type getApiAgentsAgentIdPersonaChangesResponseSuccess = (getApiAgentsAgentIdPersonaChangesResponse200) & {
+  headers: Headers;
+};
+export type getApiAgentsAgentIdPersonaChangesResponseError = (getApiAgentsAgentIdPersonaChangesResponse401 | getApiAgentsAgentIdPersonaChangesResponse403 | getApiAgentsAgentIdPersonaChangesResponse404 | getApiAgentsAgentIdPersonaChangesResponse500) & {
+  headers: Headers;
+};
+
+export type getApiAgentsAgentIdPersonaChangesResponse = (getApiAgentsAgentIdPersonaChangesResponseSuccess | getApiAgentsAgentIdPersonaChangesResponseError)
+
+export const getGetApiAgentsAgentIdPersonaChangesUrl = (agentId: string,) => {
+  return `/api/agents/${agentId}/persona-changes`
+}
+
+export const getApiAgentsAgentIdPersonaChanges = async (agentId: string, options?: RequestInit): Promise<getApiAgentsAgentIdPersonaChangesResponse> => {
+  return customBackendClient<getApiAgentsAgentIdPersonaChangesResponse>(getGetApiAgentsAgentIdPersonaChangesUrl(agentId),
+  {
+    ...options,
+    method: 'GET'
+  }
+);}
+
+export const getGetApiAgentsAgentIdPersonaChangesQueryKey = (agentId: string,) => {
+    return [
+    `/api/agents/${agentId}/persona-changes`
+    ] as const;
+    }
+
+export const getGetApiAgentsAgentIdPersonaChangesQueryOptions = <TData = Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>, TError = ErrorType<ErrorResponse>>(agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>, TError, TData>>, request?: SecondParameter<typeof customBackendClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiAgentsAgentIdPersonaChangesQueryKey(agentId);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>> = ({ signal }) => getApiAgentsAgentIdPersonaChanges(agentId, { signal, ...requestOptions });
+
+   return  { queryKey, queryFn, enabled: Boolean(agentId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiAgentsAgentIdPersonaChangesQueryResult = NonNullable<Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>>
+export type GetApiAgentsAgentIdPersonaChangesQueryError = ErrorType<ErrorResponse>
+
+/**
+ * @summary List agent's persona change history
+ */
+export function useGetApiAgentsAgentIdPersonaChanges<TData = Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>, TError = ErrorType<ErrorResponse>>(
+  agentId: string,
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiAgentsAgentIdPersonaChanges>>, TError, TData>>, request?: SecondParameter<typeof customBackendClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiAgentsAgentIdPersonaChangesQueryOptions(agentId, options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -7,13 +7,17 @@ import {
 	API_MAX_RETRIES,
 	API_RETRY_BASE_DELAY,
 	API_RETRY_MAX_DELAY,
+	CORE_VALUES_MAX,
+	CORE_VALUES_MIN,
 	LLM_MODEL,
 	LLM_TOKEN_LIMITS,
+	PERSONA_TRAITS_MAX,
 } from "../config/constants";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
 	AgentPersona,
+	AgentWithPersona,
 	Feedback,
 	JudgeVerdict,
 	NextTopic,
@@ -397,10 +401,18 @@ export async function updateAgentPersona(
 
 	const agentWithPersona = parseAgentPersona(agent);
 
+	// Shuffle traits to reduce positional bias in LLM output
+	const shuffledPersona = {
+		...agentWithPersona.persona,
+		personality_traits: [...agentWithPersona.persona.personality_traits].sort(
+			() => Math.random() - 0.5,
+		),
+	};
+
 	const systemPrompt = "あなたはAIエージェントの人格を更新する専門家です。";
 
 	const userPrompt = `## 現在の人格
-${JSON.stringify(agentWithPersona.persona, null, 2)}
+${JSON.stringify(shuffledPersona, null, 2)}
 
 ## ユーザーからのフィードバック
 ${feedbacks.map((f) => f.content).join("\n---\n")}
@@ -408,6 +420,11 @@ ${feedbacks.map((f) => f.content).join("\n---\n")}
 ## 指示
 上記の人格に、ユーザーのフィードバックを反映した新しい人格を生成してください。
 既存の人格を尊重しつつ、徐々にユーザーの意向を反映させてください。
+
+制約:
+- core_values: ${CORE_VALUES_MIN}〜${CORE_VALUES_MAX}個
+- personality_traits: 最大${PERSONA_TRAITS_MAX}個
+- 既存のcore_valuesをなるべく維持し、フィードバックに基づいて追加・削除する
 
 JSON形式で出力してください：
 {
@@ -445,6 +462,25 @@ JSONのみを出力してください。`;
 		}
 
 		newPersona.version = agentWithPersona.persona.version + 1;
+
+		// Enforce core_values bounds
+		if (newPersona.core_values.length > CORE_VALUES_MAX) {
+			newPersona.core_values = newPersona.core_values.slice(0, CORE_VALUES_MAX);
+		}
+		while (newPersona.core_values.length < CORE_VALUES_MIN) {
+			const original = agentWithPersona.persona.core_values;
+			const missing = original.find((v) => !newPersona.core_values.includes(v));
+			if (missing) {
+				newPersona.core_values.push(missing);
+			} else {
+				break;
+			}
+		}
+
+		// Enforce personality_traits max
+		if (newPersona.personality_traits.length > PERSONA_TRAITS_MAX) {
+			newPersona.personality_traits = newPersona.personality_traits.slice(0, PERSONA_TRAITS_MAX);
+		}
 
 		return newPersona;
 	} catch (error) {
@@ -625,11 +661,77 @@ JSON形式で出力してください（他の説明は不要です）：
 		}
 
 		return {
-			title: topic.title.slice(0, 30),
-			description: topic.description.slice(0, 100),
+			title: topic.title,
+			description: topic.description,
 		};
 	} catch (error) {
 		console.error("Failed to generate next topic:", error);
 		return null;
+	}
+}
+
+/**
+ * Generate agent reflection (question + context) after a session
+ * The agent formulates a question to ask its user for advice
+ */
+export async function generateAgentReflection(
+	env: Bindings,
+	agent: Agent,
+	sessionSummary: string,
+	topicTitle: string,
+	highlights: string[],
+): Promise<{ question: string; context_summary: string }> {
+	const agentWithPersona = parseAgentPersona(agent);
+
+	const highlightText =
+		highlights.length > 0 ? `\n印象に残ったこと: ${highlights.slice(0, 3).join(" / ")}` : "";
+
+	const userPrompt = `あなたは「${agent.name}」という議論エージェントです。
+大事にしていること: ${agentWithPersona.persona.core_values.join("、")}
+
+「${topicTitle}」について議論してきました。
+要約: ${sessionSummary}${highlightText}
+
+オーナーに気軽に相談します。以下のルールで質問を1つ考え、JSONで出力してください。
+
+ルール:
+- 小学生でも分かる言葉で書く
+- 「AとB、どっちがいいと思う？」のような二択か、「〜ってどう思う？」程度のシンプルな問いかけにする
+- 政策提言や制度設計のような難しい質問は禁止
+- 印象に残ったことの中から1つ選んで、それに対する素朴な迷いを聞く
+
+{"question":"40文字以内","context_summary":"議論でこうだったという背景を80文字以内"}`;
+
+	try {
+		const response = await callAnthropicAPI(env, {
+			model: LLM_MODEL,
+			max_tokens: LLM_TOKEN_LIMITS.AGENT_REFLECTION,
+			messages: [{ role: "user", content: userPrompt }],
+		});
+
+		const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+		if (!jsonMatch) {
+			throw new Error("Failed to extract JSON from response");
+		}
+
+		const reflection = JSON.parse(jsonMatch[0]) as {
+			question: string;
+			context_summary: string;
+		};
+
+		if (!reflection.question || !reflection.context_summary) {
+			throw new Error("Invalid reflection structure");
+		}
+
+		return {
+			question: reflection.question.slice(0, 40),
+			context_summary: reflection.context_summary.slice(0, 80),
+		};
+	} catch (error) {
+		console.error("Failed to generate agent reflection:", error);
+		return {
+			question: "どっちの考え方がいいと思う？",
+			context_summary: "議論してきたよ。ちょっと迷ってるんだ。",
+		};
 	}
 }

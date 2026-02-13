@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
 	BackLink,
 	ConfirmDialog,
+	EmptyState,
 	GradientTitle,
 	InfoAlert,
 	LoadingState,
@@ -12,11 +13,15 @@ import { ProtectedRoute } from "../../components/ProtectedRoute";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
 	getGetApiAgentsQueryKey,
+	type PersonaChangeEntry,
 	useDeleteApiAgentsId,
+	useGetApiAgentsAgentIdPersonaChanges,
 	useGetApiAgentsId,
 } from "../../hooks/backend";
+import type { AgentPersona } from "../../lib/types";
 import { formatDateTime } from "../../utils/date";
 
 export function meta() {
@@ -27,6 +32,8 @@ export default function AgentDetail() {
 	const { id } = useParams();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const [searchParams] = useSearchParams();
+	const defaultTab = searchParams.get("tab") === "growth" ? "growth" : "profile";
 
 	const { data: agentData, isLoading: loading, error } = useGetApiAgentsId(id ?? "");
 	const deleteAgentMutation = useDeleteApiAgentsId({
@@ -98,60 +105,79 @@ export default function AgentDetail() {
 							</Badge>
 						</div>
 
-						{/* Persona Status Card */}
-						<Card className="mb-6 overflow-hidden">
-							<CardContent className="space-y-4">
-								<div>
-									<p className="text-xs font-semibold text-muted-foreground mb-1">思考スタイル</p>
-									<p className="text-sm">{agent.persona.thinking_style}</p>
-								</div>
+						<Tabs defaultValue={defaultTab}>
+							<TabsList className="w-full mb-6">
+								<TabsTrigger value="profile" className="flex-1">
+									プロフィール
+								</TabsTrigger>
+								<TabsTrigger value="growth" className="flex-1">
+									成長きろく
+								</TabsTrigger>
+							</TabsList>
 
-								<div>
-									<p className="text-xs font-semibold text-muted-foreground mb-1">背景</p>
-									<p className="text-sm">{agent.persona.background}</p>
-								</div>
+							<TabsContent value="profile">
+								{/* Persona Status Card */}
+								<Card className="mb-6 overflow-hidden">
+									<CardContent className="space-y-4">
+										<div>
+											<p className="text-xs font-semibold text-muted-foreground mb-1">
+												思考スタイル
+											</p>
+											<p className="text-sm">{agent.persona.thinking_style}</p>
+										</div>
 
-								<div>
-									<p className="text-xs font-semibold text-muted-foreground mb-1">
-										大事にしていること
-									</p>
-									<div className="flex flex-wrap gap-1.5">
-										{agent.persona.core_values.map((value) => (
-											<StatusBadge key={value} variant="info">
-												{value}
-											</StatusBadge>
-										))}
-									</div>
-								</div>
+										<div>
+											<p className="text-xs font-semibold text-muted-foreground mb-1">背景</p>
+											<p className="text-sm">{agent.persona.background}</p>
+										</div>
 
-								<div>
-									<p className="text-xs font-semibold text-muted-foreground mb-1">性格特性</p>
-									<div className="flex flex-wrap gap-1.5">
-										{agent.persona.personality_traits.map((trait) => (
-											<StatusBadge key={trait} variant="completed">
-												{trait}
-											</StatusBadge>
-										))}
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+										<div>
+											<p className="text-xs font-semibold text-muted-foreground mb-1">
+												大事にしていること
+											</p>
+											<div className="flex flex-wrap gap-1.5">
+												{agent.persona.core_values.map((value) => (
+													<StatusBadge key={value} variant="info">
+														{value}
+													</StatusBadge>
+												))}
+											</div>
+										</div>
 
-						{/* Action Buttons */}
-						<div className="grid grid-cols-2 gap-3 mb-6">
-							<ActionCard
-								emoji="📚"
-								label="知識管理"
-								description="知識を与えて育てる"
-								to={`/agents/${id}/knowledge`}
-							/>
-							<ActionCard
-								emoji="📜"
-								label="議論の履歴"
-								description="過去の議論を振り返る"
-								to={`/sessions?agent=${id}`}
-							/>
-						</div>
+										<div>
+											<p className="text-xs font-semibold text-muted-foreground mb-1">性格特性</p>
+											<div className="flex flex-wrap gap-1.5">
+												{agent.persona.personality_traits.map((trait) => (
+													<StatusBadge key={trait} variant="completed">
+														{trait}
+													</StatusBadge>
+												))}
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+
+								{/* Action Buttons */}
+								<div className="grid grid-cols-2 gap-3 mb-6">
+									<ActionCard
+										emoji="📚"
+										label="知識管理"
+										description="知識を与えて育てる"
+										to={`/agents/${id}/knowledge`}
+									/>
+									<ActionCard
+										emoji="📜"
+										label="議論の履歴"
+										description="過去の議論を振り返る"
+										to={`/sessions?agent=${id}`}
+									/>
+								</div>
+							</TabsContent>
+
+							<TabsContent value="growth">
+								<GrowthHistory agentId={id ?? ""} />
+							</TabsContent>
+						</Tabs>
 
 						{/* Footer */}
 						<div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t">
@@ -206,5 +232,120 @@ function ActionCard({
 				</CardContent>
 			</Card>
 		</Link>
+	);
+}
+
+function GrowthHistory({ agentId }: { agentId: string }) {
+	const { data, isLoading } = useGetApiAgentsAgentIdPersonaChanges(agentId);
+
+	if (isLoading) {
+		return <LoadingState message="成長きろくを読み込み中..." />;
+	}
+
+	const changes: PersonaChangeEntry[] =
+		data?.status === 200 && data.data && "persona_changes" in data.data
+			? data.data.persona_changes
+			: [];
+
+	if (changes.length === 0) {
+		return <EmptyState message="まだ成長きろくがありません" description="声をかけると成長します" />;
+	}
+
+	return (
+		<div className="space-y-4">
+			{changes.map((change) => (
+				<GrowthHistoryEntry key={change.id} change={change} />
+			))}
+		</div>
+	);
+}
+
+function GrowthHistoryEntry({ change }: { change: PersonaChangeEntry }) {
+	let before: AgentPersona;
+	let after: AgentPersona;
+	try {
+		before = JSON.parse(change.persona_before) as AgentPersona;
+		after = JSON.parse(change.persona_after) as AgentPersona;
+	} catch {
+		return null;
+	}
+
+	const addedValues = after.core_values.filter((v) => !before.core_values.includes(v));
+	const removedValues = before.core_values.filter((v) => !after.core_values.includes(v));
+	const addedTraits = after.personality_traits.filter(
+		(t) => !before.personality_traits.includes(t),
+	);
+	const removedTraits = before.personality_traits.filter(
+		(t) => !after.personality_traits.includes(t),
+	);
+	const thinkingChanged = before.thinking_style !== after.thinking_style;
+
+	return (
+		<Card>
+			<CardContent className="space-y-3">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2 text-sm">
+						<StatusBadge variant="pending">Lv.{before.version}</StatusBadge>
+						<span className="text-muted-foreground">→</span>
+						<StatusBadge variant="active">Lv.{after.version}</StatusBadge>
+					</div>
+					<span className="text-xs text-muted-foreground">{formatDateTime(change.created_at)}</span>
+				</div>
+
+				{(addedValues.length > 0 || removedValues.length > 0) && (
+					<div>
+						<p className="text-xs font-semibold text-muted-foreground mb-1">大事にしていること</p>
+						<div className="flex flex-wrap gap-1">
+							{addedValues.map((v) => (
+								<StatusBadge key={`+${v}`} variant="active">
+									+ {v}
+								</StatusBadge>
+							))}
+							{removedValues.map((v) => (
+								<StatusBadge key={`-${v}`} variant="cancelled">
+									- {v}
+								</StatusBadge>
+							))}
+						</div>
+					</div>
+				)}
+
+				{(addedTraits.length > 0 || removedTraits.length > 0) && (
+					<div>
+						<p className="text-xs font-semibold text-muted-foreground mb-1">性格特性</p>
+						<div className="flex flex-wrap gap-1">
+							{addedTraits.map((t) => (
+								<StatusBadge key={`+${t}`} variant="active">
+									+ {t}
+								</StatusBadge>
+							))}
+							{removedTraits.map((t) => (
+								<StatusBadge key={`-${t}`} variant="cancelled">
+									- {t}
+								</StatusBadge>
+							))}
+						</div>
+					</div>
+				)}
+
+				{thinkingChanged && (
+					<div>
+						<p className="text-xs font-semibold text-muted-foreground mb-1">思考スタイル</p>
+						<p className="text-xs">
+							<span className="line-through text-muted-foreground">{before.thinking_style}</span>
+						</p>
+						<p className="text-xs font-medium">{after.thinking_style}</p>
+					</div>
+				)}
+
+				{addedValues.length === 0 &&
+					removedValues.length === 0 &&
+					addedTraits.length === 0 &&
+					removedTraits.length === 0 &&
+					!thinkingChanged && (
+						<p className="text-xs text-muted-foreground">内面的な変化がありました（背景の更新）</p>
+					)}
+			</CardContent>
+		</Card>
 	);
 }

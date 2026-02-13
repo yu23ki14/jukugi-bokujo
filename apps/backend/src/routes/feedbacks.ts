@@ -8,12 +8,13 @@ import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import { ErrorResponseSchema } from "../schemas/common";
 import {
 	CreateFeedbackRequestSchema,
-	CreateFeedbackResponseSchema,
+	CreateFeedbackWithPersonaResponseSchema,
 	FeedbackSchema,
 	ListFeedbacksResponseSchema,
 	ListSessionStrategiesResponseSchema,
 	UpdateFeedbackRequestSchema,
 } from "../schemas/feedbacks";
+import { updateAgentPersona } from "../services/anthropic";
 import type { Bindings } from "../types/bindings";
 import type { Agent, Feedback, SessionStrategy } from "../types/database";
 import { forbidden, handleDatabaseError, notFound, sendError } from "../utils/errors";
@@ -34,7 +35,7 @@ const createFeedbackRoute = createRoute({
 	tags: ["Feedbacks"],
 	summary: "Add feedback for a completed session",
 	description:
-		"Provide feedback (max 400 chars) for a completed session. One feedback per agent per session.",
+		"Provide feedback (max 200 chars) for a completed session. One feedback per agent per session.",
 	security: [{ bearerAuth: [] }],
 	request: {
 		params: z.object({
@@ -57,7 +58,7 @@ const createFeedbackRoute = createRoute({
 	responses: {
 		201: {
 			description: "Feedback created successfully",
-			content: { "application/json": { schema: CreateFeedbackResponseSchema } },
+			content: { "application/json": { schema: CreateFeedbackWithPersonaResponseSchema } },
 		},
 		400: {
 			description: "Validation error",
@@ -135,11 +136,74 @@ feedbacks.openapi(createFeedbackRoute, async (c) => {
 		const now = getCurrentTimestamp();
 
 		await c.env.DB.prepare(
-			`INSERT INTO feedbacks (id, agent_id, session_id, content, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+			`INSERT INTO feedbacks (id, agent_id, session_id, content, reflection_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
 		)
-			.bind(feedbackId, agentId, body.session_id, body.content.trim(), now)
+			.bind(
+				feedbackId,
+				agentId,
+				body.session_id,
+				body.content.trim(),
+				body.reflection_id || null,
+				now,
+			)
 			.run();
+
+		// Attempt immediate persona update (non-fatal)
+		let personaChange: { persona_before: string; persona_after: string } | null = null;
+		try {
+			const fullAgent = await c.env.DB.prepare(
+				"SELECT id, user_id, name, persona, status, created_at, updated_at FROM agents WHERE id = ?",
+			)
+				.bind(agentId)
+				.first<Agent>();
+
+			if (fullAgent) {
+				const persona_before = fullAgent.persona;
+
+				const newPersona = await updateAgentPersona(c.env, fullAgent, [
+					{
+						id: feedbackId,
+						agent_id: agentId,
+						session_id: body.session_id,
+						content: body.content.trim(),
+						reflection_id: body.reflection_id || null,
+						applied_at: null,
+						created_at: now,
+					},
+				]);
+
+				await c.env.DB.prepare("UPDATE agents SET persona = ?, updated_at = ? WHERE id = ?")
+					.bind(JSON.stringify(newPersona), now, agentId)
+					.run();
+
+				await c.env.DB.prepare("UPDATE feedbacks SET applied_at = ? WHERE id = ?")
+					.bind(now, feedbackId)
+					.run();
+
+				await c.env.DB.prepare(
+					`INSERT INTO persona_changes (id, agent_id, feedback_id, persona_before, persona_after, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+				)
+					.bind(
+						generateUUID(),
+						agentId,
+						feedbackId,
+						persona_before,
+						JSON.stringify(newPersona),
+						now,
+					)
+					.run();
+
+				personaChange = {
+					persona_before,
+					persona_after: JSON.stringify(newPersona),
+				};
+			}
+		} catch (personaError) {
+			console.error("Failed to update persona immediately:", personaError);
+			personaChange = null;
+		}
 
 		return c.json(
 			{
@@ -148,6 +212,7 @@ feedbacks.openapi(createFeedbackRoute, async (c) => {
 				session_id: body.session_id,
 				content: body.content.trim(),
 				created_at: now,
+				persona_change: personaChange,
 			},
 			201,
 		);
