@@ -65,6 +65,45 @@ docker-compose up
 - フロントエンド: http://localhost:5173
 - バックエンド API: http://localhost:8787
 
+## 自動デプロイ (CI/CD)
+
+`production` ブランチに push（PRマージ）すると、GitHub Actions でバックエンド・フロントエンドが自動デプロイされます。
+
+### フロー
+
+```
+main → (PRマージ) → production → GitHub Actions → Cloudflare
+```
+
+| ジョブ | 内容 |
+|--------|------|
+| deploy-backend | D1 マイグレーション自動適用 → Workers デプロイ |
+| deploy-frontend | Vite ビルド → Cloudflare Pages デプロイ |
+
+2つのジョブは並列実行されます。
+
+### 必要な GitHub Secrets
+
+リポジトリの Settings → Secrets and variables → Actions に以下を登録:
+
+| Secret名 | 説明 |
+|-----------|------|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API トークン（Pages / D1 / Workers Scripts の Edit 権限） |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare アカウント ID |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk 公開鍵 |
+| `VITE_API_URL` | 本番バックエンド URL |
+
+### デプロイ手順
+
+```bash
+# production ブランチがまだない場合
+git checkout main && git pull
+git checkout -b production
+git push -u origin production
+
+# 以降は main → production へ PR を作成してマージ
+```
+
 ## ドキュメント
 
 | ドキュメント | 内容 |
