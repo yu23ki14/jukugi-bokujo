@@ -22,6 +22,22 @@ shadcn/ui をベースに、熟議牧場専用のデザインシステムを構�
 - **ベースカラー**: Neutral
 - **角丸**: Large (`0.875rem`)
 - **ダークモード**: `.dark` クラスによる切替対応済み
+- **セマンティックカラートークン**: ステータス・アラート・スコア用のCSS変数を `app.css` で定義 (OKLCH)
+
+### セマンティックカラートークン
+
+`app.css` の `:root` / `.dark` で定義。Tailwind クラスから `text-status-active`, `bg-alert-info-bg` 等として利用できる。
+
+| カテゴリ | トークン | 用途 |
+|---|---|---|
+| **ステータス** | `--status-{variant}` / `--status-{variant}-bg` | StatusBadge の前景・背景色 |
+| | variant: `active`, `completed`, `pending`, `cancelled`, `feedback`, `direction` | |
+| **アラート** | `--alert-{variant}` / `--alert-{variant}-bg` / `--alert-{variant}-border` | InfoAlert の前景・背景・ボーダー色 |
+| | variant: `info`, `warning`, `error`, `strategy` | |
+| **スコア** | `--score-{color}` | ScoreCard のスコア値テキスト色 |
+| | color: `blue`, `green`, `purple`, `orange` | |
+
+すべて OKLCH カラースペースで定義し、ライトモード・ダークモードそれぞれに適切な値を設定済み。
 
 ### ディレクトリ構成
 
@@ -51,7 +67,9 @@ apps/frontend/app/
 │   │   ├── ConfirmDialog.tsx
 │   │   ├── FilterTabs.tsx
 │   │   ├── Pagination.tsx
-│   │   └── ScoreCard.tsx
+│   │   ├── ScoreCard.tsx
+│   │   ├── GradientTitle.tsx
+│   │   └── ProgressBar.tsx
 │   ├── AgentCard.tsx        # 既存 (リファクタ対象)
 │   ├── SessionTimeline.tsx  # 既存 (リファクタ対象)
 │   └── ...
@@ -209,13 +227,13 @@ type StatusVariant =
   | "direction"
 
 const variantStyles: Record<StatusVariant, string> = {
-  active:    "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  completed: "bg-green-100 text-green-700 hover:bg-green-100",
-  pending:   "bg-gray-100 text-gray-700 hover:bg-gray-100",
-  cancelled: "bg-red-100 text-red-700 hover:bg-red-100",
-  info:      "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  feedback:  "bg-orange-100 text-orange-700 hover:bg-orange-100",
-  direction: "bg-purple-100 text-purple-700 hover:bg-purple-100",
+  active:    "bg-status-active-bg text-status-active hover:bg-status-active-bg",
+  completed: "bg-status-completed-bg text-status-completed hover:bg-status-completed-bg",
+  pending:   "bg-status-pending-bg text-status-pending hover:bg-status-pending-bg",
+  cancelled: "bg-status-cancelled-bg text-status-cancelled hover:bg-status-cancelled-bg",
+  info:      "bg-status-active-bg text-status-active hover:bg-status-active-bg",
+  feedback:  "bg-status-feedback-bg text-status-feedback hover:bg-status-feedback-bg",
+  direction: "bg-status-direction-bg text-status-direction hover:bg-status-direction-bg",
 }
 
 interface StatusBadgeProps {
@@ -473,11 +491,11 @@ import { cn } from "~/lib/utils"
 type InfoAlertVariant = "info" | "warning" | "error" | "feedback" | "strategy"
 
 const variantStyles: Record<InfoAlertVariant, string> = {
-  info:     "border-blue-400 bg-blue-50 text-blue-900 [&>svg]:text-blue-600",
-  warning:  "border-orange-400 bg-orange-50 text-orange-900 [&>svg]:text-orange-600",
-  error:    "border-red-400 bg-red-50 text-red-900 [&>svg]:text-red-600",
-  feedback: "border-orange-400 bg-orange-50 text-orange-900 [&>svg]:text-orange-600",
-  strategy: "border-indigo-400 bg-indigo-50 text-indigo-900 [&>svg]:text-indigo-600",
+  info:     "border-alert-info-border bg-alert-info-bg text-alert-info [&>svg]:text-alert-info",
+  warning:  "border-alert-warning-border bg-alert-warning-bg text-alert-warning [&>svg]:text-alert-warning",
+  error:    "border-alert-error-border bg-alert-error-bg text-alert-error [&>svg]:text-alert-error",
+  feedback: "border-alert-warning-border bg-alert-warning-bg text-alert-warning [&>svg]:text-alert-warning",
+  strategy: "border-alert-strategy-border bg-alert-strategy-bg text-alert-strategy [&>svg]:text-alert-strategy",
 }
 
 interface InfoAlertProps {
@@ -824,15 +842,15 @@ interface ScoreCardProps {
 }
 
 const colorStyles = {
-  blue:   "text-blue-600",
-  green:  "text-green-600",
-  purple: "text-purple-600",
-  orange: "text-orange-600",
+  blue:   "text-score-blue",
+  green:  "text-score-green",
+  purple: "text-score-purple",
+  orange: "text-score-orange",
 }
 
 export function ScoreCard({ label, value, color = "blue" }: ScoreCardProps) {
   return (
-    <div className="text-center p-3 bg-muted/50 rounded-lg">
+    <div className="text-center p-3 bg-card rounded-lg">
       <div className={cn("text-2xl font-bold", colorStyles[color])}>
         {value}
       </div>
@@ -843,6 +861,139 @@ export function ScoreCard({ label, value, color = "blue" }: ScoreCardProps) {
 ```
 
 **置換対象**: session detail の分析スコア — 計1箇所 (4指標)
+
+#### 2.13 GradientTitle
+
+ページ見出しに使うグラデーションテキスト。ページごとの色テーマを `colorScheme` で切り替える。
+
+```tsx
+// app/components/design-system/GradientTitle.tsx
+
+import { cn } from "~/lib/utils"
+
+type ColorScheme = "green" | "blue"
+
+const colorSchemes: Record<ColorScheme, string> = {
+  green: "from-green-600 to-emerald-500",
+  blue:  "from-blue-600 to-cyan-500",
+}
+
+interface GradientTitleProps {
+  children: React.ReactNode
+  colorScheme?: ColorScheme
+  as?: "h1" | "h2" | "h3" | "p"
+  className?: string
+}
+
+export function GradientTitle({
+  children,
+  colorScheme = "green",
+  as: Tag = "h1",
+  className,
+}: GradientTitleProps) {
+  return (
+    <Tag
+      className={cn(
+        "font-bold bg-gradient-to-r bg-clip-text text-transparent",
+        colorSchemes[colorScheme],
+        className,
+      )}
+    >
+      {children}
+    </Tag>
+  )
+}
+```
+
+**使用例**:
+
+```tsx
+// Before
+<h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
+  新しいなかまを迎える
+</h1>
+
+// After
+<GradientTitle className="text-3xl mb-2">新しいなかまを迎える</GradientTitle>
+
+// 青テーマ (knowledge ページ)
+<GradientTitle colorScheme="blue" className="text-3xl mb-2">知識倉庫</GradientTitle>
+
+// p タグとして使用 (agent reveal)
+<GradientTitle as="p" className="text-2xl">{agent.name}</GradientTitle>
+```
+
+**適用箇所**: home, agents/index, agents/new (2箇所), agents/detail, agents/knowledge — 計6箇所
+
+#### 2.14 ProgressBar
+
+連続型のプログレスバー。XP バーやターン進行の表示に使用する。
+
+```tsx
+// app/components/design-system/ProgressBar.tsx
+
+import { cn } from "~/lib/utils"
+
+interface ProgressBarProps {
+  value: number
+  max: number
+  colorScheme?: "primary" | "green" | "blue"
+  size?: "sm" | "md"
+  className?: string
+}
+
+const barColors: Record<string, string> = {
+  primary: "bg-primary",
+  green:   "bg-green-500",
+  blue:    "bg-gradient-to-r from-blue-500 to-cyan-500",
+}
+
+export function ProgressBar({
+  value,
+  max,
+  colorScheme = "primary",
+  size = "md",
+  className,
+}: ProgressBarProps) {
+  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0
+  return (
+    <div
+      className={cn(
+        "w-full bg-muted rounded-full overflow-hidden",
+        size === "sm" ? "h-1.5" : "h-2",
+        className,
+      )}
+    >
+      <div
+        className={cn("h-full rounded-full transition-all", barColors[colorScheme])}
+        style={{ width: `${percentage}%` }}
+      />
+    </div>
+  )
+}
+```
+
+**使用例**:
+
+```tsx
+// Before (dashboard XP bar)
+<div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-4">
+  <div
+    className="h-full bg-primary rounded-full transition-all"
+    style={{ width: `${currentLevelXp}%` }}
+  />
+</div>
+
+// After
+<ProgressBar value={currentLevelXp} max={100} className="h-3 mb-4" />
+
+// Session detail turn progress
+<ProgressBar value={current} max={max} className="w-24" />
+```
+
+**適用箇所**: dashboard (XP バー), sessions/detail (TurnProgressBar) — 計2箇所
+
+> **Note**: sessions/index のセグメント型ターンバーや knowledge のスロットゲージは、個別のセグメントにステータスごとの色分けが必要なため、ProgressBar ではなくインライン実装を維持している。
 
 ---
 
@@ -930,6 +1081,6 @@ pnpm dlx shadcn@latest add button card badge alert input textarea label alert-di
 
 1. **shadcn ファースト**: まず shadcn 標準コンポーネントをそのまま使う。カスタムラッパーは本当に必要な場合のみ作成する
 2. **セマンティックな命名**: `bg-green-100` ではなく `variant="completed"` で意味を伝える
-3. **デザイントークンの活用**: ハードコードされた色 (`blue-600`) ではなく CSS 変数 (`primary`, `muted-foreground`) を使う
+3. **デザイントークンの活用**: ハードコードされた色 (`blue-600`) ではなく CSS 変数 (`primary`, `muted-foreground`, `status-active`, `alert-info` 等) を使う。ステータス・アラート・スコア用のセマンティックカラートークンは `app.css` で定義済み
 4. **最小限の Props**: コンポーネントは必要最小限の Props に留め、過度な抽象化を避ける
 5. **コロケーション**: ページ固有のロジックはページに残し、デザインシステムは見た目の責務のみ持つ
