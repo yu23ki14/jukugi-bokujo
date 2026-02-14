@@ -446,7 +446,7 @@ ${feedbacks.map((f) => f.content).join("\n---\n")}
 制約:
 - core_values: ${CORE_VALUES_MIN}〜${CORE_VALUES_MAX}個
 - personality_traits: 最大${PERSONA_TRAITS_MAX}個
-- 既存のcore_valuesをなるべく維持し、フィードバックに基づいて追加・削除する
+- 既存のcore_values、personality_traitsを維持しつつも、フィードバックに基づいて追加・削除する
 
 JSON形式で出力してください：
 {
