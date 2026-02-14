@@ -2,13 +2,14 @@ import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+import type { RadarAxis } from "../../components/design-system";
 import {
 	BackLink,
 	FormField,
 	InfoAlert,
 	LoadingState,
 	ProgressBar,
-	ScoreCard,
+	RadarChart,
 	StatusBadge,
 } from "../../components/design-system";
 import { SessionTimeline } from "../../components/SessionTimeline";
@@ -215,6 +216,40 @@ export default function SessionDetailPage() {
 	);
 }
 
+const JUDGE_AXES: RadarAxis[] = [
+	{ key: "quality_score", label: "議論の質", description: "論理性、根拠の明確さ、議論の深さ" },
+	{
+		key: "cooperation_score",
+		label: "協調性",
+		description: "建設的な対話、相互理解、攻撃性の有無",
+	},
+	{
+		key: "convergence_score",
+		label: "まとまり度",
+		description: "明確な合意形成、曖昧さの排除",
+	},
+	{
+		key: "novelty_score",
+		label: "新規性",
+		description: "創造性、既存の通説からの脱却",
+	},
+	{
+		key: "inclusiveness_score",
+		label: "包摂性",
+		description: "多様な立場・背景への配慮、少数意見の尊重",
+	},
+	{
+		key: "transformation_score",
+		label: "意見変容度",
+		description: "議論を通じた意見の変化・発展、柔軟性",
+	},
+	{
+		key: "cross_reference_score",
+		label: "相互参照度",
+		description: "他者の発言への言及・引用、対話の連続性",
+	},
+];
+
 /** Completed session section: judge verdict + collapsible summary */
 function CompletedSection({
 	summary,
@@ -226,6 +261,9 @@ function CompletedSection({
 		cooperation_score: number;
 		convergence_score: number;
 		novelty_score: number;
+		inclusiveness_score?: number;
+		transformation_score?: number;
+		cross_reference_score?: number;
 		summary: string;
 		highlights?: string[];
 		consensus?: string;
@@ -241,16 +279,10 @@ function CompletedSection({
 					<div className={summary ? "mb-4" : ""}>
 						<h2 className="text-lg font-bold mb-2">ジャッジ評価</h2>
 						<div className="space-y-4">
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-								<ScoreCard label="議論の質" value={judgeVerdict.quality_score} color="blue" />
-								<ScoreCard label="協調性" value={judgeVerdict.cooperation_score} color="green" />
-								<ScoreCard
-									label="まとまり度"
-									value={judgeVerdict.convergence_score}
-									color="purple"
-								/>
-								<ScoreCard label="新規性" value={judgeVerdict.novelty_score} color="orange" />
-							</div>
+							<RadarChart
+								axes={JUDGE_AXES}
+								data={judgeVerdict as unknown as Record<string, number | undefined>}
+							/>
 
 							<div>
 								<h3 className="font-semibold text-foreground mb-2">まとめ</h3>

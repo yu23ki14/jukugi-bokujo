@@ -25,6 +25,18 @@ export const JudgeVerdictSchema = z
 			description: "Novelty score of perspectives presented (1-10)",
 			example: 6,
 		}),
+		inclusiveness_score: z.number().int().min(1).max(10).optional().openapi({
+			description: "Inclusiveness score - how well diverse perspectives are included (1-10)",
+			example: 7,
+		}),
+		transformation_score: z.number().int().min(1).max(10).optional().openapi({
+			description: "Opinion transformation score - how much opinions evolved (1-10)",
+			example: 6,
+		}),
+		cross_reference_score: z.number().int().min(1).max(10).optional().openapi({
+			description: "Cross-reference score - how well participants referenced each other (1-10)",
+			example: 7,
+		}),
 		summary: z.string().openapi({
 			description: "Summary of the deliberation evaluation",
 			example:

@@ -99,6 +99,9 @@ export interface JudgeVerdict {
 	cooperation_score: number;
 	convergence_score: number;
 	novelty_score: number;
+	inclusiveness_score?: number;
+	transformation_score?: number;
+	cross_reference_score?: number;
 	summary: string;
 	highlights: string[];
 	consensus?: string;

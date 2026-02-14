@@ -9,6 +9,8 @@ export { LoadingState } from "./LoadingState";
 export { PageHeader } from "./PageHeader";
 export { Pagination } from "./Pagination";
 export { ProgressBar } from "./ProgressBar";
+export type { RadarAxis } from "./RadarChart";
+export { RadarChart } from "./RadarChart";
 export { ScoreCard } from "./ScoreCard";
 export { Spinner } from "./Spinner";
 export { StatusBadge } from "./StatusBadge";
