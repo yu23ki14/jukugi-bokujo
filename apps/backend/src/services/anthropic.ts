@@ -292,8 +292,16 @@ export async function generateJudgeVerdict(
 	session: Session & { topic_title: string; topic_description: string },
 	allStatements: Array<Statement & { agent_name: string; turn_number: number }>,
 ): Promise<JudgeVerdict> {
-	const systemPrompt =
-		"あなたは議論の良し悪しを判断する公平な審判です。熟議セッションの内容を評価し、判定を下します。";
+	const systemPrompt = `あなたは議論の良し悪しを判断する厳格な審判です。甘い採点は議論の改善を妨げるため、問題点を積極的に見つけてください。
+
+## 採点基準（全軸共通・1-10点）
+1-2: 著しく不足。該当する要素がほぼ見られない
+3-4: 不十分。断片的にはあるが全体として弱い
+5-6: 平均的。基本はできているが深みや際立つ点に欠ける
+7-8: 優良。明確な強みがあり問題点が少ない
+9-10: 卓越。極めて稀な水準
+
+大半の議論は3-6点に収まります。7点以上には具体的根拠が必要です。`;
 
 	const formatAllStatements = (
 		statements: Array<Statement & { agent_name: string; turn_number: number }>,
@@ -324,21 +332,29 @@ ${session.topic_description}
 ## 議論全体
 ${formatAllStatements(allStatements)}
 
-## 評価項目
-以下の観点から厳密に評価してください：
+## 評価軸
+1. quality: 論理性、根拠の明確さ、議論の深さ
+2. cooperation: 建設的対話、相互理解
+3. convergence: 合意形成の明確さ
+4. novelty: 独自の視点、通説からの脱却
+5. inclusiveness: 多様な立場への配慮、少数意見の尊重
+6. transformation: 議論を通じた意見の変化・発展
+7. cross_reference: 他者の発言への言及、対話の連続性
 
-1. 議論の質（1-10点）：論理性、根拠の明確さ、深さを厳しく評価
-2. 参加者の協調性（1-10点）：建設的対話、相互理解、攻撃性の有無を厳しく評価
-3. 結論への収束度（1-10点）：明確な合意形成、曖昧さの排除を厳しく評価
-4. 新しい視点の提示（1-10点）：創造性、既存の通説からの脱却を厳しく評価
+## 回答手順
+まず各軸について問題点・不足点を必ず1つ以上指摘し、それを踏まえて採点してください。
+問題点が見つからない軸のみ7点以上を付けてください。
 
-JSON形式で以下の構造で回答してください：
+以下のJSON形式で出力してください：
 {
-  "quality_score": number,
-  "cooperation_score": number,
-  "convergence_score": number,
-  "novelty_score": number,
-  "summary": "評価のサマリー",
+  "quality_score": number, "quality_issue": "問題点を1文で",
+  "cooperation_score": number, "cooperation_issue": "問題点を1文で",
+  "convergence_score": number, "convergence_issue": "問題点を1文で",
+  "novelty_score": number, "novelty_issue": "問題点を1文で",
+  "inclusiveness_score": number, "inclusiveness_issue": "問題点を1文で",
+  "transformation_score": number, "transformation_issue": "問題点を1文で",
+  "cross_reference_score": number, "cross_reference_issue": "問題点を1文で",
+  "summary": "総合評価を2-3文で",
   "highlights": ["注目すべき発言1", "注目すべき発言2"],
   "consensus": "到達したコンセンサス（あれば）"
 }
@@ -366,7 +382,10 @@ JSONのみを出力してください。`;
 			typeof verdict.quality_score !== "number" ||
 			typeof verdict.cooperation_score !== "number" ||
 			typeof verdict.convergence_score !== "number" ||
-			typeof verdict.novelty_score !== "number"
+			typeof verdict.novelty_score !== "number" ||
+			typeof verdict.inclusiveness_score !== "number" ||
+			typeof verdict.transformation_score !== "number" ||
+			typeof verdict.cross_reference_score !== "number"
 		) {
 			throw new Error("Invalid verdict structure");
 		}
@@ -380,6 +399,9 @@ JSONのみを出力してください。`;
 			cooperation_score: 5,
 			convergence_score: 5,
 			novelty_score: 5,
+			inclusiveness_score: 5,
+			transformation_score: 5,
+			cross_reference_score: 5,
 			summary: "（評価の生成に失敗しました）",
 			highlights: [],
 			consensus: "（評価できませんでした）",
