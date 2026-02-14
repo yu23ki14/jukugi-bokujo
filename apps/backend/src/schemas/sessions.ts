@@ -64,7 +64,7 @@ export const SessionStatusEnum = z.enum(["pending", "active", "completed", "canc
 /**
  * Session mode enum
  */
-export const SessionModeEnum = z.enum(["double_diamond", "free_discussion"]);
+export const SessionModeEnum = z.enum(["double_diamond", "free_discussion", "tutorial"]);
 
 /**
  * Turn status enum
@@ -233,6 +233,10 @@ export const GetSessionResponseSchema = z
 		}),
 		judge_verdict: JudgeVerdictSchema.nullable().openapi({
 			description: "Judge's verdict (available when completed)",
+		}),
+		is_tutorial: z.boolean().openapi({
+			description: "Whether this is a tutorial session",
+			example: false,
 		}),
 		started_at: z.number().int().nullable().openapi({
 			description: "Unix timestamp (seconds) when started",

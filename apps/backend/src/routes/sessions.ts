@@ -84,7 +84,7 @@ publicSessions.openapi(listSessionsRoute, async (c) => {
     `;
 			params.push(user_id);
 		} else {
-			// All sessions
+			// All sessions (hide tutorials)
 			query = `
       SELECT
         s.id, s.topic_id, s.status, s.mode, s.current_turn, s.max_turns,
@@ -92,11 +92,12 @@ publicSessions.openapi(listSessionsRoute, async (c) => {
         t.title as topic_title
       FROM sessions s
       JOIN topics t ON s.topic_id = t.id
+      WHERE s.is_tutorial = 0
     `;
 		}
 
 		if (status) {
-			query += user_id ? " AND s.status = ?" : " WHERE s.status = ?";
+			query += " AND s.status = ?";
 			params.push(status);
 		}
 
@@ -128,11 +129,12 @@ publicSessions.openapi(listSessionsRoute, async (c) => {
 			countQuery = `
       SELECT COUNT(*) as total
       FROM sessions s
+      WHERE s.is_tutorial = 0
     `;
 		}
 
 		if (status) {
-			countQuery += user_id ? " AND s.status = ?" : " WHERE s.status = ?";
+			countQuery += " AND s.status = ?";
 			countParams.push(status);
 		}
 
@@ -278,6 +280,7 @@ publicSessions.openapi(getSessionRoute, async (c) => {
 			})),
 			summary: session.summary,
 			judge_verdict: judgeVerdict,
+			is_tutorial: session.is_tutorial === 1,
 			started_at: session.started_at,
 			completed_at: session.completed_at,
 		});

@@ -17,6 +17,14 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "../../components/ui/dialog";
+import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
@@ -62,6 +70,8 @@ export default function SessionDetailPage() {
 
 	const session =
 		!sessionError && sessionData?.data && "topic" in sessionData.data ? sessionData.data : null;
+	// biome-ignore lint/suspicious/noExplicitAny: is_tutorial may not be in generated types yet
+	const isTutorial = !!(session as any)?.is_tutorial;
 	const turnsResponse = !turnsError && turnsData?.data ? turnsData.data : null;
 	const turns = turnsResponse && "turns" in turnsResponse ? turnsResponse.turns : [];
 
@@ -83,16 +93,17 @@ export default function SessionDetailPage() {
 	const hasProcessingTurn = turns.some((t) => t.status === "processing");
 	const showDirectionInput = isActive && myParticipants.length > 0 && !hasProcessingTurn;
 
-	// Auto-refresh for active sessions every 15 seconds
+	// Auto-refresh for active sessions (5s for tutorial, 15s for normal)
 	useEffect(() => {
 		if (isActive) {
+			const intervalMs = isTutorial ? 5000 : 15000;
 			const interval = setInterval(() => {
 				refetchSession();
 				refetchTurns();
-			}, 15000);
+			}, intervalMs);
 			return () => clearInterval(interval);
 		}
-	}, [isActive, refetchSession, refetchTurns]);
+	}, [isActive, isTutorial, refetchSession, refetchTurns]);
 
 	return (
 		<div className="max-w-6xl mx-auto">
@@ -133,6 +144,9 @@ export default function SessionDetailPage() {
 								{session.topic.description}
 							</p>
 						)}
+
+						{/* Tutorial banner */}
+						{isTutorial && <TutorialBanner isCompleted={session.status === "completed"} />}
 
 						{/* Completed session: judge + summary (between header and participants) */}
 						{session.status === "completed" && (session.summary || session.judge_verdict) && (
@@ -352,6 +366,73 @@ function TurnProgressBar({ current, max }: { current: number; max: number }) {
 			</span>
 			<ProgressBar value={current} max={max} className="w-24" />
 		</div>
+	);
+}
+
+/** Tutorial banner with rules modal */
+function TutorialBanner({ isCompleted }: { isCompleted: boolean }) {
+	return (
+		<Card className="mb-4 border-primary/30 bg-primary/5">
+			<CardContent className="py-4">
+				<div className="flex items-center justify-between flex-wrap gap-3">
+					<div>
+						<p className="font-bold text-sm">これはチュートリアルマッチです</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{isCompleted
+								? "お疲れさまでした! これが議論の基本的な流れです。"
+								: "NPC 3体とあなたのなかまで短い議論を体験中です。"}
+						</p>
+					</div>
+					<Dialog>
+						<DialogTrigger asChild>
+							<Button variant="outline" size="sm">
+								実際のルールを見る
+							</Button>
+						</DialogTrigger>
+						<DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
+							<DialogHeader>
+								<DialogTitle>熟議牧場のルール</DialogTitle>
+								<DialogDescription>実際のセッションはこのように進みます</DialogDescription>
+							</DialogHeader>
+							<div className="space-y-4 text-sm">
+								<div>
+									<h3 className="font-semibold mb-1">議論の開始</h3>
+									<p className="text-muted-foreground">
+										6時間ごとに新しい議論が自動的に始まります。あなたのなかまは自動的に参加します。
+									</p>
+								</div>
+								<div>
+									<h3 className="font-semibold mb-1">議論の流れ</h3>
+									<p className="text-muted-foreground">
+										4体のなかまが参加し、最大10ターンの議論を行います。各ターンは15分ごとに進行します。
+									</p>
+								</div>
+								<div>
+									<h3 className="font-semibold mb-1">なかまの育て方</h3>
+									<ul className="list-disc list-inside space-y-1 text-muted-foreground">
+										<li>知識を与えて、議論の材料を増やす</li>
+										<li>声をかけて、次のターンの方針を伝える</li>
+										<li>ふりかえりで、議論後にフィードバックする</li>
+									</ul>
+								</div>
+								<div>
+									<h3 className="font-semibold mb-1">成長のしくみ</h3>
+									<p className="text-muted-foreground">
+										あなたのフィードバックを受けて、なかまの性格や考え方が少しずつ変化していきます。
+									</p>
+								</div>
+								<div>
+									<h3 className="font-semibold mb-1">評価</h3>
+									<p className="text-muted-foreground">
+										議論が終わると、AIジャッジが7つの観点で評価します。なかまの成長を見守りましょう。
+									</p>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
+				</div>
+			</CardContent>
+		</Card>
 	);
 }
 

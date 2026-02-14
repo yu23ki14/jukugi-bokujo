@@ -3,7 +3,7 @@
  * Checks if a turn is complete and handles session completion
  */
 
-import { SUMMARY_MIN_TURN } from "../config/constants";
+import { SUMMARY_MIN_TURN, TUTORIAL_TURN_DELAY_SECONDS } from "../config/constants";
 import {
 	generateAgentReflection,
 	generateJudgeVerdict,
@@ -63,6 +63,8 @@ export async function checkAndCompleteTurn(
 		return true;
 	}
 
+	const isTutorial = session.is_tutorial === 1;
+
 	// 4. Check if session is complete
 	if (turnNumber >= session.max_turns) {
 		console.log(`[Session Completion] Session ${sessionId} reached max turns, completing...`);
@@ -75,19 +77,53 @@ export async function checkAndCompleteTurn(
 			.bind(sessionId, turnNumber + 1)
 			.first<{ id: string }>();
 
+		let nextTurnId: string;
+
 		if (existingNextTurn) {
 			console.log(
 				`[Turn Completion] Next turn ${turnNumber + 1} already exists for session ${sessionId}, skipping creation`,
 			);
+			nextTurnId = existingNextTurn.id;
 		} else {
-			const nextTurnId = generateUUID();
+			nextTurnId = generateUUID();
+			const now = getCurrentTimestamp();
 			await env.DB.prepare(
 				"INSERT INTO turns (id, session_id, turn_number, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
 			)
-				.bind(nextTurnId, sessionId, turnNumber + 1, getCurrentTimestamp())
+				.bind(nextTurnId, sessionId, turnNumber + 1, now)
 				.run();
 
-			console.log(`[Turn Completion] Created next turn ${turnNumber + 1} for session ${sessionId}`);
+			console.log(
+				`[Turn Completion] Created next turn ${turnNumber + 1} (pending) for session ${sessionId}`,
+			);
+		}
+
+		// 6. For tutorials, enqueue with delay (don't wait for cron)
+		//    Turn stays pending during the delay so users can send directions.
+		//    The queue consumer will flip it to processing when the message arrives.
+		if (isTutorial) {
+			const firstParticipant = await env.DB.prepare(
+				"SELECT agent_id, speaking_order FROM session_participants WHERE session_id = ? ORDER BY speaking_order ASC LIMIT 1",
+			)
+				.bind(sessionId)
+				.first<{ agent_id: string; speaking_order: number }>();
+
+			if (firstParticipant) {
+				await env.TURN_QUEUE.send(
+					{
+						turnId: nextTurnId,
+						sessionId,
+						agentId: firstParticipant.agent_id,
+						turnNumber: turnNumber + 1,
+						speakingOrder: firstParticipant.speaking_order,
+						attempt: 0,
+					},
+					{ delaySeconds: TUTORIAL_TURN_DELAY_SECONDS },
+				);
+				console.log(
+					`[Turn Completion] Tutorial: enqueued turn ${turnNumber + 1} with ${TUTORIAL_TURN_DELAY_SECONDS}s delay for session ${sessionId}`,
+				);
+			}
 		}
 	}
 

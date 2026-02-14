@@ -7,6 +7,7 @@
 
 import { doubleDiamondStrategy } from "./double-diamond";
 import { freeDiscussionStrategy } from "./free-discussion";
+import { tutorialStrategy } from "./tutorial";
 import type { SessionModeStrategy } from "./types";
 
 // ============================================================================
@@ -16,6 +17,7 @@ import type { SessionModeStrategy } from "./types";
 const MODE_REGISTRY: Record<string, SessionModeStrategy> = {
 	double_diamond: doubleDiamondStrategy,
 	free_discussion: freeDiscussionStrategy,
+	tutorial: tutorialStrategy,
 };
 
 /**

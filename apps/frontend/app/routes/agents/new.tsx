@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import {
 	BackLink,
 	FormField,
@@ -17,6 +17,7 @@ import {
 	getGetApiAgentsQueryKey,
 	usePostApiAgents,
 } from "../../hooks/backend";
+import { customBackendClient } from "../../lib/orval-custom";
 import { cn } from "../../lib/utils";
 
 const AGENT_VALUE_OPTIONS = [
@@ -62,6 +63,9 @@ export default function NewAgent() {
 	const [error, setError] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>("form");
 	const [createdAgent, setCreatedAgent] = useState<CreateAgentResponse | null>(null);
+	const [tutorialSessionId, setTutorialSessionId] = useState<string | null>(null);
+	const [tutorialError, setTutorialError] = useState(false);
+	const [tutorialLoading, setTutorialLoading] = useState(false);
 
 	const createAgentMutation = usePostApiAgents({
 		mutation: {
@@ -105,14 +109,36 @@ export default function NewAgent() {
 		},
 	});
 
-	useEffect(() => {
-		if (phase === "reveal" && createdAgent) {
-			const timer = setTimeout(() => {
-				navigate(`/agents/${createdAgent.id}`);
-			}, 2500);
-			return () => clearTimeout(timer);
+	const startTutorial = useCallback(async (agentId: string) => {
+		setTutorialLoading(true);
+		try {
+			const result = await customBackendClient<{ data: { sessionId: string } }>(
+				"/api/tutorial-session",
+				{
+					method: "POST",
+					data: JSON.stringify({ agentId }),
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+			setTutorialSessionId(result.data.sessionId);
+		} catch {
+			setTutorialError(true);
+		} finally {
+			setTutorialLoading(false);
 		}
-	}, [phase, createdAgent, navigate]);
+	}, []);
+
+	useEffect(() => {
+		if (
+			phase === "reveal" &&
+			createdAgent &&
+			!tutorialSessionId &&
+			!tutorialError &&
+			!tutorialLoading
+		) {
+			startTutorial(createdAgent.id);
+		}
+	}, [phase, createdAgent, tutorialSessionId, tutorialError, tutorialLoading, startTutorial]);
 
 	function handleNameSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -277,9 +303,21 @@ export default function NewAgent() {
 								)}
 							</div>
 
-							<p className="text-center text-sm text-muted-foreground mt-6">
-								知識と方向性を与えて育てていこう!
-							</p>
+							<div className="mt-6 text-center">
+								{tutorialLoading && (
+									<p className="text-sm text-muted-foreground">チュートリアルの準備中...</p>
+								)}
+								{tutorialSessionId && (
+									<Button size="lg" className="w-full" asChild>
+										<Link to={`/sessions/${tutorialSessionId}`}>議論に送り出す</Link>
+									</Button>
+								)}
+								{tutorialError && (
+									<Button size="lg" variant="secondary" className="w-full" asChild>
+										<Link to={`/agents/${createdAgent.id}`}>なかまを見に行く</Link>
+									</Button>
+								)}
+							</div>
 						</CardContent>
 					</Card>
 				</div>
