@@ -66,7 +66,7 @@ export interface NextTopic {
 
 export type SessionStatus = "pending" | "active" | "completed" | "cancelled";
 
-export type SessionMode = "double_diamond" | "free_discussion";
+export type SessionMode = "double_diamond" | "free_discussion" | "tutorial";
 
 export interface Session {
 	id: string;
@@ -81,6 +81,7 @@ export interface Session {
 	judge_verdict: string | null; // JSON string of JudgeVerdict
 	started_at: number | null;
 	completed_at: number | null;
+	is_tutorial: number;
 	created_at: number;
 	updated_at: number;
 }

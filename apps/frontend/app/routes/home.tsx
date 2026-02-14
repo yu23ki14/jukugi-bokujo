@@ -4,8 +4,8 @@ import { Link } from "react-router";
 import { EmptyState, GradientTitle, LoadingState, StatusBadge } from "~/components/design-system";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { createApiClient } from "../lib/api";
 import type { SessionSummary } from "../hooks/backend";
+import { createApiClient } from "../lib/api";
 
 export function meta() {
 	return [
@@ -89,10 +89,10 @@ export default function Home() {
 
 					<SignedOut>
 						<div className="flex gap-4 justify-center flex-wrap">
-							<Button size="lg" asChild>
+							<Button size="lg" className="h-14 px-10 text-lg" asChild>
 								<Link to="/signup">無料ではじめる</Link>
 							</Button>
-							<Button variant="outline" size="lg" asChild>
+							<Button variant="outline" size="lg" className="h-14 px-10 text-lg" asChild>
 								<Link to="/sessions">議論を覗いてみる</Link>
 							</Button>
 						</div>
@@ -100,10 +100,10 @@ export default function Home() {
 
 					<SignedIn>
 						<div className="flex gap-4 justify-center flex-wrap">
-							<Button size="lg" asChild>
+							<Button size="lg" className="h-14 px-10 text-lg" asChild>
 								<Link to="/dashboard">牧場に行く</Link>
 							</Button>
-							<Button variant="outline" size="lg" asChild>
+							<Button variant="outline" size="lg" className="h-14 px-10 text-lg" asChild>
 								<Link to="/agents/new">新しいなかまを迎える</Link>
 							</Button>
 						</div>

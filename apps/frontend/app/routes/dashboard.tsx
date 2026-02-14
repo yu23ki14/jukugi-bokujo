@@ -95,17 +95,19 @@ export default function Dashboard() {
 
 	const { data: agentsData, isLoading: agentsLoading, error: agentsError } = useGetApiAgents();
 
+	const userId = user?.id;
+
 	const {
 		data: activeSessionsData,
 		isLoading: activeSessionsLoading,
 		error: activeSessionsError,
-	} = useGetApiSessions({ status: "active", limit: 5 });
+	} = useGetApiSessions({ status: "active", limit: 5, user_id: userId });
 
 	const {
 		data: completedSessionsData,
 		isLoading: completedSessionsLoading,
 		error: completedSessionsError,
-	} = useGetApiSessions({ status: "completed", limit: 1 });
+	} = useGetApiSessions({ status: "completed", limit: 1, user_id: userId });
 
 	const {
 		data: feedbackData,

@@ -13,6 +13,7 @@
 import {
 	AGENT_ACTIVITY_THRESHOLD_DAYS,
 	MAX_SESSIONS_PER_AGENT,
+	NPC_USER_ID,
 	SESSION_PARTICIPANT_COUNT,
 } from "../config/constants";
 import { getAllModes } from "../config/session-modes/registry";
@@ -125,12 +126,13 @@ async function getAllActiveAgents(db: D1Database): Promise<Agent[]> {
        LEFT JOIN feedbacks f ON a.id = f.agent_id
        LEFT JOIN knowledge_entries ke ON a.id = ke.agent_id
        WHERE a.status = 'active'
+         AND a.user_id != ?
          AND (f.created_at >= ?
           OR ke.created_at >= ?
           OR a.created_at >= ?)
        GROUP BY a.id`,
 		)
-		.bind(thresholdTimestamp, thresholdTimestamp, thresholdTimestamp)
+		.bind(NPC_USER_ID, thresholdTimestamp, thresholdTimestamp, thresholdTimestamp)
 		.all<Agent>();
 
 	return result.results;

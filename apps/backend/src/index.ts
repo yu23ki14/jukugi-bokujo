@@ -389,6 +389,7 @@ import { knowledgeRouter } from "./routes/knowledge";
 import { reflectionsRouter } from "./routes/reflections";
 import { protectedSessionsRouter, publicSessionsRouter } from "./routes/sessions";
 import { adminTopicsRouter, publicTopicsRouter } from "./routes/topics";
+import { tutorialRouter } from "./routes/tutorial";
 
 app.route("/api", publicTopicsRouter); // Public topics (no auth) - mount first
 app.route("/api", adminTopicsRouter); // Admin topics (with auth)
@@ -400,6 +401,7 @@ app.route("/api", feedbackRequestsRouter); // Mounts /feedback-requests
 app.route("/api", reflectionsRouter); // Mounts /agents/:agentId/reflections and /agents/:agentId/persona-changes
 app.route("/api/sessions", publicSessionsRouter); // Public sessions (no auth)
 app.route("/api/sessions", protectedSessionsRouter); // Protected sessions (with auth)
+app.route("/api/tutorial-session", tutorialRouter); // Tutorial session (with auth)
 
 // ============================================================================
 // 404 Handler
@@ -501,6 +503,16 @@ async function handleQueueEvent(
 	// Process messages in parallel
 	await Promise.all(
 		batch.messages.map(async (message) => {
+			// 0. If this is the first agent in the turn, flip pending → processing
+			if (message.body.speakingOrder === 1) {
+				const now = Math.floor(Date.now() / 1000);
+				await env.DB.prepare(
+					"UPDATE turns SET status = 'processing', started_at = COALESCE(started_at, ?) WHERE id = ? AND status = 'pending'",
+				)
+					.bind(now, message.body.turnId)
+					.run();
+			}
+
 			// 1. Process this agent's statement
 			try {
 				const result = await processAgentStatement(env, message.body);

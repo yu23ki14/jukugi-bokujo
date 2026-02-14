@@ -220,6 +220,44 @@ export const AGENT_VALUE_OPTIONS = [
 export const REQUIRED_VALUES_COUNT = 3;
 
 // ============================================================================
+// Tutorial (NPC) Configuration
+// ============================================================================
+
+/**
+ * NPC user ID (system-owned agents)
+ */
+export const NPC_USER_ID = "system";
+
+/**
+ * NPC agent IDs
+ */
+export const NPC_AGENT_IDS = [
+	"a0000001-0000-4000-8000-000000000001",
+	"a0000002-0000-4000-8000-000000000002",
+	"a0000003-0000-4000-8000-000000000003",
+] as const;
+
+/**
+ * Maximum turns for tutorial sessions
+ */
+export const TUTORIAL_MAX_TURNS = 3;
+
+/**
+ * Delay in seconds between tutorial turns (gives user time to send directions)
+ */
+export const TUTORIAL_TURN_DELAY_SECONDS = 90;
+
+
+/**
+ * Tutorial topic
+ */
+export const TUTORIAL_TOPIC = {
+	title: "AIと人間の未来の関係",
+	description:
+		"AIが日常生活に浸透する中で、人間とAIはどのような関係を築いていくべきでしょうか？協力、共存、それとも距離を置くべき？あなたの考えを自由に語ってください。",
+} as const;
+
+// ============================================================================
 // Queue Configuration
 // ============================================================================
 
