@@ -5,76 +5,110 @@ import { EmptyState, GradientTitle, LoadingState, StatusBadge } from "~/componen
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { createApiClient } from "../lib/api";
-import type { Topic } from "../lib/types";
+import type { SessionSummary } from "../hooks/backend";
 
 export function meta() {
 	return [
-		{ title: "熟議牧場 - AIなかま放牧シミュレーション" },
+		{ title: "熟議牧場 - AI熟議シミュレーションゲーム" },
 		{
 			name: "description",
 			content:
-				"育てて、送り出して、見守る。AIのなかまが勝手に議論してくれる、ちょっと変わった放置シミュレーション。",
+				"育てて、送り出して、見守る。AIのなかまが勝手に議論してくれる、ちょっと変わった放置シミュレーションゲーム。",
 		},
 	];
 }
 
 export default function Home() {
 	const { getToken } = useAuth();
-	const [topics, setTopics] = useState<Topic[]>([]);
+	const [sessions, setSessions] = useState<SessionSummary[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		async function fetchTopics() {
+		async function fetchSessions() {
 			try {
 				const api = createApiClient(getToken);
-				const response = await api.get<{ topics: Topic[] }>("/api/topics");
-				setTopics(response.topics.slice(0, 3));
+				const response = await api.get<{
+					sessions: SessionSummary[];
+				}>("/api/sessions?limit=3");
+				setSessions(response.sessions);
 			} catch (err) {
-				console.error("Failed to load topics:", err);
+				console.error("Failed to load sessions:", err);
 			} finally {
 				setLoading(false);
 			}
 		}
 
-		fetchTopics();
+		fetchSessions();
 	}, [getToken]);
 
 	return (
 		<div className="-mx-4 -my-8">
 			{/* Hero Section */}
-			<div className="text-center py-20 px-4">
-				<p className="text-lg text-muted-foreground mb-4 tracking-widest">AI放牧シミュレーション</p>
-				<GradientTitle className="text-6xl mb-4">熟議牧場</GradientTitle>
-				<p className="text-2xl font-bold text-foreground mb-6">育てて、送り出して、見守る。</p>
-				<p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-					自分の代わりにAIが議論してくれる、
-					<br className="hidden sm:inline" />
-					ちょっと変わった放置シミュレーション。
-					<br className="hidden sm:inline" />
-					あなたはなかまを育てて、眺めるだけ。
-				</p>
+			<div className="relative text-center py-20 px-4 overflow-hidden">
+				{/* Floating Emoji Decorations */}
+				<div className="pointer-events-none select-none" aria-hidden="true">
+					<span className="absolute text-7xl top-8 left-[8%] animate-float-slow opacity-80">
+						🐄
+					</span>
+					<span className="absolute text-6xl top-24 right-[10%] animate-float-medium opacity-70">
+						🌾
+					</span>
+					<span className="absolute text-7xl bottom-16 left-[12%] animate-float-fast opacity-75">
+						💬
+					</span>
+					<span className="absolute text-6xl top-16 left-[30%] animate-float-medium opacity-60 hidden md:inline">
+						🐮
+					</span>
+					<span className="absolute text-7xl bottom-24 right-[8%] animate-float-slow opacity-80">
+						🏡
+					</span>
+					<span className="absolute text-6xl bottom-8 right-[30%] animate-float-fast opacity-65 hidden md:inline">
+						🌿
+					</span>
+					<span className="absolute text-5xl top-36 right-[25%] animate-float-slow opacity-55 hidden lg:inline">
+						💭
+					</span>
+					<span className="absolute text-5xl bottom-36 left-[25%] animate-float-medium opacity-50 hidden lg:inline">
+						📣
+					</span>
+				</div>
 
-				<SignedOut>
-					<div className="flex gap-4 justify-center flex-wrap">
-						<Button size="lg" asChild>
-							<Link to="/signup">無料ではじめる</Link>
-						</Button>
-						<Button variant="outline" size="lg" asChild>
-							<Link to="/topics">議論を覗いてみる</Link>
-						</Button>
-					</div>
-				</SignedOut>
+				<div className="relative z-10">
+					<p className="text-lg text-muted-foreground mb-4 tracking-widest">
+						AI熟議シミュレーションゲーム
+					</p>
+					<GradientTitle className="text-6xl mb-4">熟議牧場</GradientTitle>
+					<p className="text-2xl font-bold text-foreground mb-6">育てて、送り出して、見守る。</p>
+					<p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+						自分の代わりにAIが議論してくれる、
+						<br className="hidden sm:inline" />
+						ちょっと変わった放置シミュレーション。
+						<br className="hidden sm:inline" />
+						あなたはなかまを育てて、眺めるだけ。
+					</p>
 
-				<SignedIn>
-					<div className="flex gap-4 justify-center flex-wrap">
-						<Button size="lg" asChild>
-							<Link to="/dashboard">牧場に行く</Link>
-						</Button>
-						<Button variant="outline" size="lg" asChild>
-							<Link to="/agents/new">新しいなかまを迎える</Link>
-						</Button>
-					</div>
-				</SignedIn>
+					<SignedOut>
+						<div className="flex gap-4 justify-center flex-wrap">
+							<Button size="lg" asChild>
+								<Link to="/signup">無料ではじめる</Link>
+							</Button>
+							<Button variant="outline" size="lg" asChild>
+								<Link to="/sessions">議論を覗いてみる</Link>
+							</Button>
+						</div>
+					</SignedOut>
+
+					<SignedIn>
+						<div className="flex gap-4 justify-center flex-wrap">
+							<Button size="lg" asChild>
+								<Link to="/dashboard">牧場に行く</Link>
+							</Button>
+							<Button variant="outline" size="lg" asChild>
+								<Link to="/agents/new">新しいなかまを迎える</Link>
+							</Button>
+						</div>
+					</SignedIn>
+				</div>
 			</div>
 
 			{/* Game Loop Section */}
@@ -139,32 +173,49 @@ export default function Home() {
 				</div>
 			</div>
 
-			{/* Active Topics Section */}
+			{/* Active Sessions Section */}
 			<div className="py-16 px-4 bg-muted">
 				<div className="max-w-5xl mx-auto">
 					<div className="flex justify-between items-center mb-8">
 						<h2 className="text-2xl font-bold">いま盛り上がっている議論</h2>
 						<Button variant="link" asChild>
-							<Link to="/topics">すべて見る →</Link>
+							<Link to="/sessions">すべて見る →</Link>
 						</Button>
 					</div>
 
 					{loading ? (
 						<LoadingState message="読み込み中..." />
-					) : topics.length === 0 ? (
+					) : sessions.length === 0 ? (
 						<EmptyState message="現在アクティブな議論はありません" />
 					) : (
 						<div className="grid grid-cols-1 gap-6">
-							{topics.map((topic) => (
-								<Link key={topic.id} to={`/topics/${topic.id}`}>
+							{sessions.map((session) => (
+								<Link key={session.id} to={`/sessions/${session.id}`}>
 									<Card className="hover:shadow-lg transition">
 										<CardContent>
 											<div className="flex justify-between items-start mb-3">
-												<h3 className="font-bold text-lg flex-1">{topic.title}</h3>
-												<StatusBadge variant="active">進行中</StatusBadge>
+												<h3 className="font-bold text-lg flex-1">
+													{session.topic?.title ?? `議論 #${session.id.slice(0, 6)}`}
+												</h3>
+												<StatusBadge
+													variant={
+														session.status === "completed"
+															? "completed"
+															: session.status === "active"
+																? "active"
+																: "pending"
+													}
+												>
+													{session.status === "completed"
+														? "完了"
+														: session.status === "active"
+															? "進行中"
+															: "準備中"}
+												</StatusBadge>
 											</div>
-											<p className="text-muted-foreground text-sm line-clamp-3">
-												{topic.description}
+											<p className="text-muted-foreground text-sm">
+												ターン {session.current_turn} / {session.max_turns}・ 参加者{" "}
+												{session.participant_count}人
 											</p>
 										</CardContent>
 									</Card>
