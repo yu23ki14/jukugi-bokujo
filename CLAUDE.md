@@ -69,11 +69,13 @@ docker-compose up frontend     # Frontend only
 # Clean start (remove volumes)
 docker-compose down -v && docker-compose up
 
-# Formatting, run everytime before commit
+# Formatting, 
+# PLEASE RUN EVERYTIME BEFORE COMMIT
 pnpm biome:format
 pnpm biome:check
 
 # Typecheck
+# PLEASE RUN EVERYTIME BEFORE COMMIT
 pnpm typecheck
 ```
 

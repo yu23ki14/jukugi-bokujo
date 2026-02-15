@@ -13,11 +13,15 @@
 		"test:watch": "vitest"
 	},
 	"dependencies": {
+		"@ai-sdk/anthropic": "^3.0.44",
+		"@ai-sdk/google": "^3.0.29",
+		"@ai-sdk/openai": "^3.0.29",
 		"@anthropic-ai/sdk": "^0.74.0",
 		"@asteasolutions/zod-to-openapi": "^8.4.0",
 		"@hono/clerk-auth": "^3.1.0",
 		"@hono/swagger-ui": "^0.5.3",
 		"@hono/zod-openapi": "^1.2.1",
+		"ai": "^6.0.86",
 		"hono": "^4.11.8",
 		"zod": "^4.3.6"
 	},
