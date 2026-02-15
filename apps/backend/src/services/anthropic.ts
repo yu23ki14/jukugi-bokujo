@@ -7,12 +7,14 @@ import {
 	API_MAX_RETRIES,
 	API_RETRY_BASE_DELAY,
 	API_RETRY_MAX_DELAY,
+	BACKGROUND_MAX_LENGTH,
 	CORE_VALUES_MAX,
 	CORE_VALUES_MIN,
 	LLM_MODEL,
 	LLM_MODEL_LIGHT,
 	LLM_TOKEN_LIMITS,
 	PERSONA_TRAITS_MAX,
+	THINKING_STYLE_MAX_LENGTH,
 } from "../config/constants";
 import type { Bindings } from "../types/bindings";
 import type {
@@ -446,6 +448,8 @@ ${feedbacks.map((f) => f.content).join("\n---\n")}
 制約:
 - core_values: ${CORE_VALUES_MIN}〜${CORE_VALUES_MAX}個
 - personality_traits: 最大${PERSONA_TRAITS_MAX}個
+- thinking_style: 最大${THINKING_STYLE_MAX_LENGTH}文字
+- background: 最大${BACKGROUND_MAX_LENGTH}文字
 - 既存のcore_values、personality_traitsを維持しつつも、フィードバックに基づいて追加・削除する
 
 JSON形式で出力してください：

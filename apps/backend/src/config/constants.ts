@@ -167,6 +167,17 @@ export const CORE_VALUES_MIN = 3;
 export const CORE_VALUES_MAX = 5;
 
 /**
+ * Maximum length for agent thinking style description
+ */
+
+export const THINKING_STYLE_MAX_LENGTH = 300;
+
+/** Maximum length for agent background description
+ */
+
+export const BACKGROUND_MAX_LENGTH = 300;
+
+/**
  * Maximum number of previous statements to fetch for context
  */
 export const PREVIOUS_STATEMENTS_LIMIT = 50;
