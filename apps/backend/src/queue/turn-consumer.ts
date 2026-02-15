@@ -10,7 +10,7 @@ import {
 	LLM_TOKEN_LIMITS,
 } from "../config/constants";
 import { getModeStrategy } from "../config/session-modes/registry";
-import { callAnthropicAPI, isRateLimitError } from "../services/anthropic";
+import { callLLM, isRateLimitError } from "../services/llm";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
@@ -461,9 +461,9 @@ ${modeStrategy.getUserPromptSuffix(currentTurn, session.max_turns)}
 <summary>[1行要約 50文字以内]</summary>`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL,
-			max_tokens: LLM_TOKEN_LIMITS.STATEMENT,
+			maxTokens: LLM_TOKEN_LIMITS.STATEMENT,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});

@@ -16,7 +16,7 @@ import {
 	UpdateAgentStatusResponseSchema,
 } from "../schemas/agents";
 import { ErrorResponseSchema, SuccessResponseSchema } from "../schemas/common";
-import { generateInitialPersona } from "../services/anthropic";
+import { generateInitialPersona } from "../services/prompts/persona";
 import type { Bindings } from "../types/bindings";
 import type { Agent, AgentStatus } from "../types/database";
 import { getOrCreateUser, parseAgentPersona, stringifyAgentPersona } from "../utils/database";

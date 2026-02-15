@@ -1,10 +1,9 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import * as anthropicService from "../src/services/anthropic";
 
-// Mock the Anthropic service to avoid real API calls
-vi.mock("../src/services/anthropic", async () => {
-	const actual = await vi.importActual("../src/services/anthropic");
+// Mock the LLM service to avoid real API calls
+vi.mock("../src/services/llm", async () => {
+	const actual = await vi.importActual("../src/services/llm");
 	return {
 		...actual,
 		generateInitialPersona: vi.fn(

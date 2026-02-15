@@ -73,6 +73,25 @@ export const LLM_MODEL = "claude-sonnet-4-5-20250929";
 export const LLM_MODEL_LIGHT = "claude-haiku-4-5-20251001";
 
 /**
+ * LLM model mappings for multi-provider support
+ * Each provider has a "main" model for complex tasks and a "light" model for simple tasks
+ */
+export const LLM_MODELS = {
+	anthropic: {
+		main: "claude-sonnet-4-5-20250929",
+		light: "claude-haiku-4-5-20251001",
+	},
+	openai: {
+		main: "gpt-4o",
+		light: "gpt-4o-mini",
+	},
+	google: {
+		main: "gemini-2.0-flash-exp",
+		light: "gemini-2.0-flash-exp",
+	},
+} as const;
+
+/**
  * Token limits for different LLM operations
  */
 export const LLM_TOKEN_LIMITS = {
