@@ -7,13 +7,15 @@ vi.mock("../src/services/anthropic", async () => {
 	const actual = await vi.importActual("../src/services/anthropic");
 	return {
 		...actual,
-		generateInitialPersona: vi.fn(async (_env: unknown, agentName: string) => ({
-			core_values: ["公平性", "持続可能性", "対話重視"],
-			thinking_style: "論理的で慎重、多様な視点を尊重する",
-			personality_traits: ["思慮深い", "協調的", "柔軟"],
-			background: `${agentName}という名前の市民として様々な社会課題に関心を持つ`,
-			version: 1,
-		})),
+		generateInitialPersona: vi.fn(
+			async (_env: unknown, agentName: string, _userValues: readonly string[]) => ({
+				core_values: ["公平性", "持続可能性", "対話重視"],
+				thinking_style: "論理的で慎重、多様な視点を尊重する",
+				personality_traits: ["思慮深い", "協調的", "柔軟"],
+				background: `${agentName}という名前の市民として様々な社会課題に関心を持つ`,
+				version: 1,
+			}),
+		),
 	};
 });
 
@@ -23,6 +25,8 @@ describe("Agents API", () => {
 	const authHeader = `Bearer mock-token-${TEST_USER_ID}`;
 	const otherAuthHeader = `Bearer mock-token-${OTHER_USER_ID}`;
 
+	const TEST_VALUES = ["公平", "共感", "多様性"] as const;
+
 	// Helper function to create a test agent
 	async function createTestAgent(authorizationHeader: string, name: string): Promise<string> {
 		const response = await SELF.fetch("http://example.com/api/agents", {
@@ -31,7 +35,7 @@ describe("Agents API", () => {
 				"Content-Type": "application/json",
 				Authorization: authorizationHeader,
 			},
-			body: JSON.stringify({ name }),
+			body: JSON.stringify({ name, values: TEST_VALUES }),
 		});
 		const data = await response.json();
 		return data.id;
@@ -60,6 +64,17 @@ describe("Agents API", () => {
 			)
 		`).run();
 
+		await env.DB.prepare(`
+			CREATE TABLE IF NOT EXISTS topics (
+				id TEXT PRIMARY KEY,
+				title TEXT NOT NULL,
+				description TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'active',
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL
+			)
+		`).run();
+
 		await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_agents_user_id ON agents(user_id)").run();
 		await env.DB.prepare(
 			"CREATE INDEX IF NOT EXISTS idx_agents_user_status ON agents(user_id, status)",
@@ -73,11 +88,13 @@ describe("Agents API", () => {
 				participant_count INTEGER NOT NULL DEFAULT 0,
 				current_turn INTEGER NOT NULL DEFAULT 0,
 				max_turns INTEGER NOT NULL DEFAULT 10,
+				is_tutorial INTEGER DEFAULT 0,
 				summary TEXT,
 				judge_verdict TEXT,
 				started_at INTEGER,
 				completed_at INTEGER,
 				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL DEFAULT 0,
 				mode TEXT DEFAULT 'double_diamond'
 			)
 		`).run();
@@ -119,6 +136,7 @@ describe("Agents API", () => {
 				},
 				body: JSON.stringify({
 					name: "Test Agent",
+					values: TEST_VALUES,
 				}),
 			});
 
@@ -145,6 +163,7 @@ describe("Agents API", () => {
 			expect(anthropicService.generateInitialPersona).toHaveBeenCalledWith(
 				expect.anything(),
 				"Test Agent",
+				expect.arrayContaining(["公平", "共感", "多様性"]),
 			);
 		});
 
@@ -157,6 +176,7 @@ describe("Agents API", () => {
 				},
 				body: JSON.stringify({
 					name: "  Whitespace Agent  ",
+					values: TEST_VALUES,
 				}),
 			});
 
@@ -223,6 +243,7 @@ describe("Agents API", () => {
 				},
 				body: JSON.stringify({
 					name: "Unauthorized Agent",
+					values: TEST_VALUES,
 				}),
 			});
 
@@ -240,6 +261,7 @@ describe("Agents API", () => {
 				},
 				body: JSON.stringify({
 					name: "Invalid Token Agent",
+					values: TEST_VALUES,
 				}),
 			});
 
@@ -695,7 +717,7 @@ describe("Agents API", () => {
 						"Content-Type": "application/json",
 						Authorization: statusAuthHeader,
 					},
-					body: JSON.stringify({ name: "Status Active Agent 1" }),
+					body: JSON.stringify({ name: "Status Active Agent 1", values: TEST_VALUES }),
 				});
 				expect(res1.status).toBe(201);
 				const data1 = await res1.json();
@@ -708,7 +730,7 @@ describe("Agents API", () => {
 						"Content-Type": "application/json",
 						Authorization: statusAuthHeader,
 					},
-					body: JSON.stringify({ name: "Status Active Agent 2" }),
+					body: JSON.stringify({ name: "Status Active Agent 2", values: TEST_VALUES }),
 				});
 				expect(res2.status).toBe(201);
 				const data2 = await res2.json();
@@ -721,7 +743,7 @@ describe("Agents API", () => {
 						"Content-Type": "application/json",
 						Authorization: statusAuthHeader,
 					},
-					body: JSON.stringify({ name: "Status Reserve Agent" }),
+					body: JSON.stringify({ name: "Status Reserve Agent", values: TEST_VALUES }),
 				});
 				expect(res3.status).toBe(201);
 				const data3 = await res3.json();
@@ -846,7 +868,7 @@ describe("Agents API", () => {
 						"Content-Type": "application/json",
 						Authorization: slotAuth,
 					},
-					body: JSON.stringify({ name: "Slot Agent 3" }),
+					body: JSON.stringify({ name: "Slot Agent 3", values: TEST_VALUES }),
 				});
 				expect(res3.status).toBe(201);
 				const agent3 = await res3.json();
@@ -883,10 +905,15 @@ describe("Agents API", () => {
 				const topicId = "topic-status-test-001";
 				const sessionId = "session-status-test-001";
 				await env.DB.prepare(
-					`INSERT OR IGNORE INTO sessions (id, topic_id, status, current_turn, max_turns, created_at)
-					 VALUES (?, ?, 'active', 1, 10, ?)`,
+					"INSERT OR IGNORE INTO topics (id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
 				)
-					.bind(sessionId, topicId, now)
+					.bind(topicId, "Status Test Topic", "Test", now, now)
+					.run();
+				await env.DB.prepare(
+					`INSERT OR IGNORE INTO sessions (id, topic_id, status, current_turn, max_turns, created_at, updated_at)
+					 VALUES (?, ?, 'active', 1, 10, ?, ?)`,
+				)
+					.bind(sessionId, topicId, now, now)
 					.run();
 				await env.DB.prepare(
 					`INSERT OR IGNORE INTO session_participants (id, session_id, agent_id, joined_at, speaking_order)
