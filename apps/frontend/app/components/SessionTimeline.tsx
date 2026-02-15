@@ -251,7 +251,7 @@ function CollapsibleTurn({
 			{!isExpanded && statements.length > 0 && (
 				<div className="px-3 pb-2 space-y-1">
 					{[...statements].reverse().map((s) => (
-						<p key={s.id} className="text-xs text-muted-foreground truncate">
+						<p key={s.id} className="text-xs text-muted-foreground">
 							<span className={cn("font-medium", myAgentIds?.has(s.agent_id) && "text-primary")}>
 								{s.agent_name}
 							</span>
@@ -262,7 +262,6 @@ function CollapsibleTurn({
 			)}
 			{isExpanded && (
 				<div className="px-3 pb-3 space-y-2">
-					{turn.summary && <p className="text-sm pb-2 border-b border-border">{turn.summary}</p>}
 					{statements.length > 0 ? (
 						[...statements]
 							.reverse()
