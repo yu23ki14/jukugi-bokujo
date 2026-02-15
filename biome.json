@@ -18,6 +18,18 @@
 			"recommended": true
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["apps/frontend/app/components/ui/**"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"useSemanticElements": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double",

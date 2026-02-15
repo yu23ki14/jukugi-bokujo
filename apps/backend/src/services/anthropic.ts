@@ -10,6 +10,7 @@ import {
 	CORE_VALUES_MAX,
 	CORE_VALUES_MIN,
 	LLM_MODEL,
+	LLM_MODEL_LIGHT,
 	LLM_TOKEN_LIMITS,
 	PERSONA_TRAITS_MAX,
 } from "../config/constants";
@@ -17,7 +18,6 @@ import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
 	AgentPersona,
-	AgentWithPersona,
 	Feedback,
 	JudgeVerdict,
 	NextTopic,
@@ -174,7 +174,7 @@ JSONのみを出力し、他の説明は不要です。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.INITIAL_PERSONA,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -271,7 +271,7 @@ ${formatAllStatements(allStatements)}
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.SESSION_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -461,7 +461,7 @@ JSONのみを出力してください。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.PERSONA_UPDATE,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -562,7 +562,7 @@ export async function generateTurnSummary(
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.TURN_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -609,7 +609,7 @@ ${feedback.content}
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.STRATEGY_GENERATION,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -726,7 +726,7 @@ export async function generateAgentReflection(
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.AGENT_REFLECTION,
 			messages: [{ role: "user", content: userPrompt }],
 		});
