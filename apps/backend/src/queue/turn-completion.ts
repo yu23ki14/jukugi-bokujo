@@ -4,14 +4,10 @@
  */
 
 import { SUMMARY_MIN_TURN, TUTORIAL_TURN_DELAY_SECONDS } from "../config/constants";
-import {
-	generateAgentReflection,
-	generateJudgeVerdict,
-	generateNextTopic,
-	generateSessionSummary,
-	generateTurnSummary,
-	updateAgentPersona,
-} from "../services/llm";
+import { generateSessionSummary, generateTurnSummary } from "../services/prompts/deliberation";
+import { generateJudgeVerdict, generateNextTopic } from "../services/prompts/evaluation";
+import { generateAgentReflection } from "../services/prompts/interaction";
+import { updateAgentPersona } from "../services/prompts/persona";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
