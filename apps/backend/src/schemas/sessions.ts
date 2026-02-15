@@ -270,6 +270,10 @@ export const StatementSchema = z
 			description: "Statement content",
 			example: "I believe renewable energy is essential for...",
 		}),
+		summary: z.string().nullable().openapi({
+			description: "One-line summary of the statement",
+			example: "再生可能エネルギーの重要性を主張",
+		}),
 		created_at: z.number().int().openapi({
 			description: "Unix timestamp (seconds) when created",
 			example: 1704067200,
@@ -293,6 +297,9 @@ export const TurnSchema = z
 		status: TurnStatusEnum.openapi({
 			description: "Turn status (pending | processing | completed | failed)",
 			example: "completed",
+		}),
+		summary: z.string().nullable().openapi({
+			description: "Rolling summary of the discussion up to this turn",
 		}),
 		statements: z.array(StatementSchema).openapi({
 			description: "Statements made during this turn",

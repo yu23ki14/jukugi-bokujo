@@ -10,19 +10,34 @@ interface SessionTimelineProps {
 	turns: Turn[];
 	myAgentIds?: Set<string>;
 	maxTurns: number;
+	isCompleted?: boolean;
 }
 
 /**
  * SessionTimeline component
  * Latest turn is expanded prominently, past turns are collapsed by default
  */
-export function SessionTimeline({ turns, myAgentIds, maxTurns }: SessionTimelineProps) {
+export function SessionTimeline({
+	turns,
+	myAgentIds,
+	maxTurns,
+	isCompleted,
+}: SessionTimelineProps) {
 	if (turns.length === 0) {
 		return <EmptyState message="まだターンが始まっていません" />;
 	}
 
 	const reversedTurns = [...turns].reverse();
 	const newest = reversedTurns[0];
+
+	// When session is completed, all turns go into collapsible past turns
+	if (isCompleted) {
+		return (
+			<div className="space-y-4">
+				<PastTurnsSection turns={reversedTurns} myAgentIds={myAgentIds} />
+			</div>
+		);
+	}
 
 	// If the newest turn is pending with no statements, show it as a small banner
 	// and promote the previous turn as the main card
@@ -183,30 +198,73 @@ function CollapsibleTurn({
 	myAgentIds?: Set<string>;
 }) {
 	const statementCount = turn.statements?.length ?? 0;
+	const statements = turn.statements ?? [];
 
 	return (
-		<div className="border rounded-md">
-			<button
-				type="button"
-				onClick={onToggle}
-				className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition"
-			>
-				<ChevronRight
-					className={cn(
-						"size-4 text-muted-foreground transition-transform",
-						isExpanded && "rotate-90",
+		// biome-ignore lint/a11y/noStaticElementInteractions: role is conditionally set based on isExpanded
+		<div
+			className={cn(
+				"border rounded-md",
+				!isExpanded && "cursor-pointer hover:bg-muted/50 transition",
+			)}
+			onClick={!isExpanded ? onToggle : undefined}
+			onKeyDown={
+				!isExpanded
+					? (e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onToggle();
+							}
+						}
+					: undefined
+			}
+			role={!isExpanded ? "button" : undefined}
+			tabIndex={!isExpanded ? 0 : undefined}
+		>
+			{isExpanded ? (
+				<button
+					type="button"
+					onClick={onToggle}
+					className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition"
+				>
+					<ChevronRight className="size-4 text-muted-foreground shrink-0 transition-transform rotate-90" />
+					<span className="font-medium whitespace-nowrap">ターン {turn.turn_number}</span>
+					<span className="text-muted-foreground whitespace-nowrap">{statementCount}発言</span>
+					{turn.completed_at && (
+						<span className="text-muted-foreground ml-auto whitespace-nowrap">
+							{formatTime(turn.completed_at)}
+						</span>
 					)}
-				/>
-				<span className="font-medium">ターン {turn.turn_number}</span>
-				<span className="text-muted-foreground">{statementCount}発言</span>
-				{turn.completed_at && (
-					<span className="text-muted-foreground ml-auto">{formatTime(turn.completed_at)}</span>
-				)}
-			</button>
+				</button>
+			) : (
+				<div className="flex items-center gap-2 px-3 py-2 text-sm">
+					<ChevronRight className="size-4 text-muted-foreground shrink-0 transition-transform" />
+					<span className="font-medium whitespace-nowrap">ターン {turn.turn_number}</span>
+					<span className="text-muted-foreground whitespace-nowrap">{statementCount}発言</span>
+					{turn.completed_at && (
+						<span className="text-muted-foreground ml-auto whitespace-nowrap">
+							{formatTime(turn.completed_at)}
+						</span>
+					)}
+				</div>
+			)}
+			{!isExpanded && statements.length > 0 && (
+				<div className="px-3 pb-2 space-y-1">
+					{[...statements].reverse().map((s) => (
+						<p key={s.id} className="text-xs text-muted-foreground truncate">
+							<span className={cn("font-medium", myAgentIds?.has(s.agent_id) && "text-primary")}>
+								{s.agent_name}
+							</span>
+							: {s.summary || s.content.replace(/\n/g, " ")}
+						</p>
+					))}
+				</div>
+			)}
 			{isExpanded && (
 				<div className="px-3 pb-3 space-y-2">
-					{turn.statements && turn.statements.length > 0 ? (
-						[...turn.statements]
+					{turn.summary && <p className="text-sm pb-2 border-b border-border">{turn.summary}</p>}
+					{statements.length > 0 ? (
+						[...statements]
 							.reverse()
 							.map((statement) => (
 								<StatementBubble
