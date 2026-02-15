@@ -7,17 +7,19 @@ import {
 	API_MAX_RETRIES,
 	API_RETRY_BASE_DELAY,
 	API_RETRY_MAX_DELAY,
+	BACKGROUND_MAX_LENGTH,
 	CORE_VALUES_MAX,
 	CORE_VALUES_MIN,
 	LLM_MODEL,
+	LLM_MODEL_LIGHT,
 	LLM_TOKEN_LIMITS,
 	PERSONA_TRAITS_MAX,
+	THINKING_STYLE_MAX_LENGTH,
 } from "../config/constants";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
 	AgentPersona,
-	AgentWithPersona,
 	Feedback,
 	JudgeVerdict,
 	NextTopic,
@@ -174,7 +176,7 @@ JSONのみを出力し、他の説明は不要です。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.INITIAL_PERSONA,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -271,7 +273,7 @@ ${formatAllStatements(allStatements)}
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.SESSION_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -446,6 +448,8 @@ ${feedbacks.map((f) => f.content).join("\n---\n")}
 制約:
 - core_values: ${CORE_VALUES_MIN}〜${CORE_VALUES_MAX}個
 - personality_traits: 最大${PERSONA_TRAITS_MAX}個
+- thinking_style: 最大${THINKING_STYLE_MAX_LENGTH}文字
+- background: 最大${BACKGROUND_MAX_LENGTH}文字
 - 既存のcore_values、personality_traitsを維持しつつも、フィードバックに基づいて追加・削除する
 
 JSON形式で出力してください：
@@ -461,7 +465,7 @@ JSONのみを出力してください。`;
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.PERSONA_UPDATE,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -562,7 +566,7 @@ export async function generateTurnSummary(
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.TURN_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -609,7 +613,7 @@ ${feedback.content}
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.STRATEGY_GENERATION,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
@@ -726,7 +730,7 @@ export async function generateAgentReflection(
 
 	try {
 		const response = await callAnthropicAPI(env, {
-			model: LLM_MODEL,
+			model: LLM_MODEL_LIGHT,
 			max_tokens: LLM_TOKEN_LIMITS.AGENT_REFLECTION,
 			messages: [{ role: "user", content: userPrompt }],
 		});

@@ -182,9 +182,9 @@ describe("Tutorial API", () => {
 				.bind(data.sessionId)
 				.first();
 			expect(session).not.toBeNull();
-			expect(session!.topic_id).toBe(TUTORIAL_TOPIC_ID);
-			expect(session!.is_tutorial).toBe(1);
-			expect(session!.mode).toBe("tutorial");
+			expect(session?.topic_id).toBe(TUTORIAL_TOPIC_ID);
+			expect(session?.is_tutorial).toBe(1);
+			expect(session?.mode).toBe("tutorial");
 		});
 
 		it("should return 400 when agentId is missing", async () => {
@@ -241,7 +241,7 @@ describe("Tutorial API", () => {
 			const sessions = await env.DB.prepare(
 				"SELECT COUNT(*) as count FROM sessions WHERE is_tutorial = 1",
 			).first<{ count: number }>();
-			expect(sessions!.count).toBe(1);
+			expect(sessions?.count).toBe(1);
 		});
 
 		it("should allow different users to each have their own tutorial", async () => {
@@ -255,18 +255,18 @@ describe("Tutorial API", () => {
 		});
 
 		it("should use the pre-seeded tutorial topic, not create a new one", async () => {
-			const beforeCount = await env.DB.prepare(
-				"SELECT COUNT(*) as count FROM topics",
-			).first<{ count: number }>();
+			const beforeCount = await env.DB.prepare("SELECT COUNT(*) as count FROM topics").first<{
+				count: number;
+			}>();
 
 			await postTutorial(authHeader, AGENT_ID);
 
-			const afterCount = await env.DB.prepare(
-				"SELECT COUNT(*) as count FROM topics",
-			).first<{ count: number }>();
+			const afterCount = await env.DB.prepare("SELECT COUNT(*) as count FROM topics").first<{
+				count: number;
+			}>();
 
 			// No new topics should be created
-			expect(afterCount!.count).toBe(beforeCount!.count);
+			expect(afterCount?.count).toBe(beforeCount?.count);
 		});
 
 		it("should add user agent and 3 NPCs as participants", async () => {
@@ -297,7 +297,7 @@ describe("Tutorial API", () => {
 				.first();
 
 			expect(turn).not.toBeNull();
-			expect(turn!.status).toBe("processing");
+			expect(turn?.status).toBe("processing");
 		});
 	});
 });

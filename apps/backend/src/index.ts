@@ -465,7 +465,6 @@ async function handleScheduledEvent(event: ScheduledEvent, env: Bindings, _ctx: 
 // Queue Consumer Handler
 // ============================================================================
 
-import { API_RETRY_BASE_DELAY } from "./config/constants";
 import { checkAndCompleteTurn } from "./queue/turn-completion";
 import { processAgentStatement } from "./queue/turn-consumer";
 import type { TurnQueueMessage } from "./types/queue";

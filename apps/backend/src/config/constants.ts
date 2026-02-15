@@ -61,10 +61,16 @@ export const AGENT_ACTIVITY_THRESHOLD_DAYS = 3;
 // ============================================================================
 
 /**
- * Claude model ID to use for all LLM operations
+ * Claude model ID for high-complexity tasks (statement generation, judge verdict, next topic)
  * Using Claude Sonnet 4.5 (latest stable model)
  */
 export const LLM_MODEL = "claude-sonnet-4-5-20250929";
+
+/**
+ * Claude model ID for low-complexity tasks (summaries, persona, strategy, reflection)
+ * Using Claude Haiku 4.5 - Sonnet 4 equivalent performance at 67% cost reduction
+ */
+export const LLM_MODEL_LIGHT = "claude-haiku-4-5-20251001";
 
 /**
  * Token limits for different LLM operations
@@ -78,7 +84,7 @@ export const LLM_TOKEN_LIMITS = {
 	/**
 	 * Maximum tokens for session summary generation
 	 */
-	SESSION_SUMMARY: 8000,
+	SESSION_SUMMARY: 1500,
 
 	/**
 	 * Maximum tokens for judge verdict generation
@@ -88,7 +94,7 @@ export const LLM_TOKEN_LIMITS = {
 	/**
 	 * Maximum tokens for persona update
 	 */
-	PERSONA_UPDATE: 5000,
+	PERSONA_UPDATE: 2000,
 
 	/**
 	 * Maximum tokens for statement generation during turns
@@ -98,7 +104,7 @@ export const LLM_TOKEN_LIMITS = {
 	/**
 	 * Maximum tokens for session strategy generation from feedback
 	 */
-	STRATEGY_GENERATION: 2000,
+	STRATEGY_GENERATION: 500,
 
 	/**
 	 * Maximum tokens for rolling turn summary generation
@@ -159,6 +165,17 @@ export const CORE_VALUES_MIN = 3;
  * Maximum number of core values per agent
  */
 export const CORE_VALUES_MAX = 5;
+
+/**
+ * Maximum length for agent thinking style description
+ */
+
+export const THINKING_STYLE_MAX_LENGTH = 300;
+
+/** Maximum length for agent background description
+ */
+
+export const BACKGROUND_MAX_LENGTH = 300;
 
 /**
  * Maximum number of previous statements to fetch for context
