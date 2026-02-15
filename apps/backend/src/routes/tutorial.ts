@@ -4,7 +4,7 @@
  */
 
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { NPC_AGENT_IDS, TUTORIAL_MAX_TURNS, TUTORIAL_TOPIC } from "../config/constants";
+import { NPC_AGENT_IDS, TUTORIAL_MAX_TURNS, TUTORIAL_TOPIC_ID } from "../config/constants";
 import { clerkAuth, getAuthUserId } from "../middleware/clerk-auth";
 import type { Bindings } from "../types/bindings";
 import { getCurrentTimestamp } from "../utils/timestamp";
@@ -39,36 +39,29 @@ tutorial.post("/", async (c) => {
 		return c.json({ error: "Not your agent" }, 400);
 	}
 
-	// 2. Check if tutorial session already exists for this agent
+	// 2. Check if user has already completed a tutorial session
 	const existing = await c.env.DB.prepare(
 		`SELECT s.id FROM sessions s
      JOIN session_participants sp ON s.id = sp.session_id
-     WHERE s.is_tutorial = 1 AND sp.agent_id = ?
+     JOIN agents a ON sp.agent_id = a.id
+     WHERE s.is_tutorial = 1 AND a.user_id = ?
      LIMIT 1`,
 	)
-		.bind(agentId)
+		.bind(userId)
 		.first<{ id: string }>();
 
 	if (existing) {
 		return c.json({ sessionId: existing.id });
 	}
 
-	// 3. Create tutorial topic
-	const topicId = generateUUID();
+	// 3. Create tutorial session (topic is pre-seeded in migration)
 	const now = getCurrentTimestamp();
-	await c.env.DB.prepare(
-		"INSERT INTO topics (id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
-	)
-		.bind(topicId, TUTORIAL_TOPIC.title, TUTORIAL_TOPIC.description, now, now)
-		.run();
-
-	// 4. Create tutorial session
 	const sessionId = generateUUID();
 	await c.env.DB.prepare(
 		`INSERT INTO sessions (id, topic_id, status, mode, max_turns, is_tutorial, participant_count, started_at, created_at, updated_at)
      VALUES (?, ?, 'active', 'tutorial', ?, 1, 4, ?, ?, ?)`,
 	)
-		.bind(sessionId, topicId, TUTORIAL_MAX_TURNS, now, now, now)
+		.bind(sessionId, TUTORIAL_TOPIC_ID, TUTORIAL_MAX_TURNS, now, now, now)
 		.run();
 
 	// 5. Add participants: user agent + 3 NPCs

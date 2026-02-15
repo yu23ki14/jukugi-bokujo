@@ -247,15 +247,10 @@ export const TUTORIAL_MAX_TURNS = 3;
  */
 export const TUTORIAL_TURN_DELAY_SECONDS = 90;
 
-
 /**
  * Tutorial topic
  */
-export const TUTORIAL_TOPIC = {
-	title: "AIと人間の未来の関係",
-	description:
-		"AIが日常生活に浸透する中で、人間とAIはどのような関係を築いていくべきでしょうか？協力、共存、それとも距離を置くべき？あなたの考えを自由に語ってください。",
-} as const;
+export const TUTORIAL_TOPIC_ID = "t0000000-0000-4000-8000-000000000001";
 
 // ============================================================================
 // Queue Configuration

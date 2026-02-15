@@ -265,8 +265,10 @@ async function completeSession(
 		// 5. Update agent personas based on user inputs
 		await updateAgentPersonas(env, session.id);
 
-		// 6. Evolve topics: generate next topics and archive the current one
-		await evolveTopics(env, session, summary, judgeVerdict);
+		// 6. Evolve topics (skip for tutorials — topic is shared and permanent)
+		if (!session.is_tutorial) {
+			await evolveTopics(env, session, summary, judgeVerdict);
+		}
 	} catch (error) {
 		console.error(`[Session Completion] Failed to complete session ${session.id}:`, error);
 		// Mark as completed even if summary/verdict generation fails
