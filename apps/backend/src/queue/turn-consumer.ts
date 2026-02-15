@@ -10,8 +10,7 @@ import {
 	LLM_TOKEN_LIMITS,
 } from "../config/constants";
 import { getModeStrategy } from "../config/session-modes/registry";
-import { isRateLimitError } from "../services/anthropic";
-import { callLLM } from "../services/llm";
+import { callLLM, isRateLimitError } from "../services/llm";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,

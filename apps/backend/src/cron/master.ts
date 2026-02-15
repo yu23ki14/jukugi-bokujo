@@ -17,7 +17,7 @@ import {
 	SESSION_PARTICIPANT_COUNT,
 } from "../config/constants";
 import { getAllModes } from "../config/session-modes/registry";
-import { generateSessionStrategy } from "../services/anthropic";
+import { generateSessionStrategy } from "../services/llm";
 import type { Bindings } from "../types/bindings";
 import type { Agent, Feedback, Statement, Topic } from "../types/database";
 import { getCurrentTimestamp, getTimestampDaysAgo } from "../utils/timestamp";

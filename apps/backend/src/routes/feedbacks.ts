@@ -14,7 +14,7 @@ import {
 	ListSessionStrategiesResponseSchema,
 	UpdateFeedbackRequestSchema,
 } from "../schemas/feedbacks";
-import { updateAgentPersona } from "../services/anthropic";
+import { updateAgentPersona } from "../services/llm";
 import type { Bindings } from "../types/bindings";
 import type { Agent, Feedback, SessionStrategy } from "../types/database";
 import { forbidden, handleDatabaseError, notFound, sendError } from "../utils/errors";

@@ -11,7 +11,7 @@ import {
 	generateSessionSummary,
 	generateTurnSummary,
 	updateAgentPersona,
-} from "../services/anthropic";
+} from "../services/llm";
 import type { Bindings } from "../types/bindings";
 import type {
 	Agent,
