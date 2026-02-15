@@ -51,7 +51,7 @@ async function createTestTopic(
 	const now = Math.floor(Date.now() / 1000);
 	await db
 		.prepare(
-			"INSERT INTO topics (id, title, description, is_public, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)",
+			"INSERT INTO topics (id, title, description, status, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?)",
 		)
 		.bind(topicId, title, description, now, now)
 		.run();
@@ -151,7 +151,7 @@ describe("Feedbacks API", () => {
 				id TEXT PRIMARY KEY,
 				title TEXT NOT NULL,
 				description TEXT NOT NULL,
-				is_public INTEGER NOT NULL DEFAULT 1,
+				status TEXT NOT NULL DEFAULT 'active',
 				created_at INTEGER NOT NULL,
 				updated_at INTEGER NOT NULL
 			)
@@ -194,6 +194,7 @@ describe("Feedbacks API", () => {
 				agent_id TEXT NOT NULL,
 				session_id TEXT NOT NULL,
 				content TEXT NOT NULL,
+				reflection_id TEXT,
 				applied_at INTEGER,
 				created_at INTEGER NOT NULL,
 				FOREIGN KEY (agent_id) REFERENCES agents(id),

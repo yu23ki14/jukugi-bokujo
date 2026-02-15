@@ -51,7 +51,7 @@ tutorial.post("/", async (c) => {
 		.first<{ id: string }>();
 
 	if (existing) {
-		return c.json({ sessionId: existing.id });
+		return c.json({ error: "Tutorial session already completed" }, 400);
 	}
 
 	// 3. Create tutorial session (topic is pre-seeded in migration)
