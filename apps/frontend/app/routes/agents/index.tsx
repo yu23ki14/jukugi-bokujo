@@ -66,7 +66,7 @@ export default function AgentsIndex() {
 				{error && (
 					<div className="px-4">
 						<InfoAlert variant="error" className="mb-6">
-							<p>{error instanceof Error ? error.message : "Failed to load agents"}</p>
+							<p>{error instanceof Error ? error.message : "なかま一覧の読み込みに失敗しました"}</p>
 						</InfoAlert>
 					</div>
 				)}

@@ -9,6 +9,7 @@ import {
 import { Card, CardContent } from "../../components/ui/card";
 import { type TopicSummary, useGetApiTopics } from "../../hooks/backend";
 import { formatDate } from "../../utils/date";
+import { topicStatusLabel } from "../../utils/labels";
 
 export function meta() {
 	return [{ title: "Topics - Jukugi Bokujo" }];
@@ -29,16 +30,16 @@ export default function TopicsIndex() {
 				<InfoAlert>トピックを追加したい場合は、GitHubにIssueを立ててください。</InfoAlert>
 			</div>
 
-			{loading && <LoadingState message="Loading topics..." />}
+			{loading && <LoadingState message="トピック一覧を読み込み中..." />}
 
 			{error && (
 				<InfoAlert variant="error">
-					{error instanceof Error ? error.message : "Failed to load topics"}
+					{error instanceof Error ? error.message : "トピック一覧の読み込みに失敗しました"}
 				</InfoAlert>
 			)}
 
 			{!loading && !error && topics.length === 0 && (
-				<EmptyState message="No active topics at the moment." />
+				<EmptyState message="現在、公開中のトピックはありません" />
 			)}
 
 			{!loading && !error && topics.length > 0 && (
@@ -50,12 +51,12 @@ export default function TopicsIndex() {
 									<div className="flex justify-between items-start mb-3">
 										<h2 className="font-bold text-xl flex-1">{topic.title}</h2>
 										<StatusBadge variant={topic.status === "active" ? "completed" : "pending"}>
-											{topic.status}
+											{topicStatusLabel(topic.status)}
 										</StatusBadge>
 									</div>
 									<p className="text-muted-foreground mb-4 line-clamp-3">{topic.description}</p>
 									<p className="text-xs text-muted-foreground">
-										Created: {formatDate(topic.created_at)}
+										作成日: {formatDate(topic.created_at)}
 									</p>
 								</CardContent>
 							</Card>

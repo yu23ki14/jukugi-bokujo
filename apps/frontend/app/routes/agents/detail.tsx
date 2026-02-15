@@ -77,7 +77,7 @@ export default function AgentDetail() {
 			await deleteAgentMutation.mutateAsync({ id });
 			navigate("/agents");
 		} catch (err) {
-			alert(err instanceof Error ? err.message : "Failed to delete agent");
+			alert(err instanceof Error ? err.message : "なかまの削除に失敗しました");
 		}
 	}
 
@@ -88,7 +88,7 @@ export default function AgentDetail() {
 
 				{error && (
 					<InfoAlert variant="error">
-						<p>{error instanceof Error ? error.message : "Failed to load agent"}</p>
+						<p>{error instanceof Error ? error.message : "なかま情報の読み込みに失敗しました"}</p>
 					</InfoAlert>
 				)}
 

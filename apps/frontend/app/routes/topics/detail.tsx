@@ -9,6 +9,7 @@ import {
 import { Card, CardContent } from "../../components/ui/card";
 import { type SessionSummary, useGetApiSessions, useGetApiTopicsId } from "../../hooks/backend";
 import { formatDate } from "../../utils/date";
+import { sessionStatusLabel, topicStatusLabel } from "../../utils/labels";
 
 export function meta() {
 	return [{ title: "Topic Detail - Jukugi Bokujo" }];
@@ -43,18 +44,18 @@ export default function TopicDetail() {
 
 	return (
 		<div className="max-w-4xl mx-auto">
-			{loading && <LoadingState message="Loading topic..." />}
+			{loading && <LoadingState message="トピックを読み込み中..." />}
 
 			{error && (
 				<InfoAlert variant="error">
-					{error instanceof Error ? error.message : "Failed to load topic"}
+					{error instanceof Error ? error.message : "トピックの読み込みに失敗しました"}
 				</InfoAlert>
 			)}
 
 			{!loading && !error && topic && (
 				<div>
 					<div className="mb-6">
-						<BackLink to="/topics" label="Back to Topics" />
+						<BackLink to="/topics" label="トピック一覧に戻る" />
 					</div>
 
 					<Card className="mb-6">
@@ -62,14 +63,14 @@ export default function TopicDetail() {
 							<div className="flex justify-between items-start mb-4">
 								<h1 className="text-3xl font-bold">{topic.title}</h1>
 								<StatusBadge variant={topic.status === "active" ? "completed" : "pending"}>
-									{topic.status}
+									{topicStatusLabel(topic.status)}
 								</StatusBadge>
 							</div>
 							<p className="text-foreground leading-relaxed whitespace-pre-wrap mb-4">
 								{topic.description}
 							</p>
 							<p className="text-xs text-muted-foreground">
-								Created: {formatDate(topic.created_at)}
+								作成日: {formatDate(topic.created_at)}
 							</p>
 						</CardContent>
 					</Card>
@@ -77,7 +78,7 @@ export default function TopicDetail() {
 					<h2 className="text-2xl font-bold mb-4">このトピックでの議論 ({sessions.length})</h2>
 
 					{sessions.length === 0 ? (
-						<EmptyState message="No sessions yet for this topic." />
+						<EmptyState message="このトピックにはまだ議論がありません" />
 					) : (
 						<div className="space-y-4">
 							{sessions.map((session: SessionSummary) => (
@@ -102,24 +103,22 @@ export default function TopicDetail() {
 																			: "pending"
 															}
 														>
-															{session.status}
+															{sessionStatusLabel(session.status)}
 														</StatusBadge>
 														<span className="text-sm text-muted-foreground">
-															{session.participant_count} participants
+															{session.participant_count}体が参加
 														</span>
 														<span className="text-sm text-muted-foreground">
-															Turn {session.current_turn} / {session.max_turns}
+															ターン {session.current_turn} / {session.max_turns}
 														</span>
 													</div>
 												</div>
 											</div>
 
 											<div className="text-xs text-muted-foreground flex gap-4">
-												{session.started_at && (
-													<span>Started: {formatDate(session.started_at)}</span>
-												)}
+												{session.started_at && <span>開始: {formatDate(session.started_at)}</span>}
 												{session.completed_at && (
-													<span>Completed: {formatDate(session.completed_at)}</span>
+													<span>完了: {formatDate(session.completed_at)}</span>
 												)}
 											</div>
 										</CardContent>

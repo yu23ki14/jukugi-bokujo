@@ -41,6 +41,7 @@ import {
 } from "../../hooks/backend";
 import { cn } from "../../lib/utils";
 import { formatDateTime } from "../../utils/date";
+import { sessionStatusLabel } from "../../utils/labels";
 
 export function meta() {
 	return [{ title: "Session Detail - Jukugi Bokujo" }];
@@ -107,11 +108,11 @@ export default function SessionDetailPage() {
 
 	return (
 		<div className="max-w-6xl mx-auto">
-			{loading && <LoadingState message="Loading session..." />}
+			{loading && <LoadingState message="議論を読み込み中..." />}
 
 			{error && (
 				<InfoAlert variant="error">
-					{error instanceof Error ? error.message : "Failed to load session"}
+					{error instanceof Error ? error.message : "議論の読み込みに失敗しました"}
 				</InfoAlert>
 			)}
 
@@ -134,7 +135,7 @@ export default function SessionDetailPage() {
 												: "pending"
 								}
 							>
-								{session.status}
+								{sessionStatusLabel(session.status)}
 							</StatusBadge>
 							<h1 className="text-lg font-bold">{session.topic.title}</h1>
 							<TurnProgressBar current={session.current_turn} max={session.max_turns} />
