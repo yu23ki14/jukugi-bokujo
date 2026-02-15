@@ -40,11 +40,16 @@ retry_delay = 60          # Wait 60s before retry
 [vars]
 ENVIRONMENT = "production"
 TEST_MODE = "true"
+LLM_PROVIDER = "anthropic"  # Options: anthropic, openai, google
 
 # Secrets (set via `wrangler secret put <KEY>` for production)
 # - CLERK_SECRET_KEY: Clerk API secret key
-# - ANTHROPIC_API_KEY: Anthropic API key for LLM integration
+# - ANTHROPIC_API_KEY: Anthropic API key (required if using anthropic provider)
+# - OPENAI_API_KEY: OpenAI API key (optional - only if using openai provider)
+# - GOOGLE_API_KEY: Google API key (optional - only if using google provider)
 #
 # Local development: use .dev.vars file
 # Production: wrangler secret put CLERK_SECRET_KEY
 #             wrangler secret put ANTHROPIC_API_KEY
+#             wrangler secret put OPENAI_API_KEY (optional)
+#             wrangler secret put GOOGLE_API_KEY (optional)

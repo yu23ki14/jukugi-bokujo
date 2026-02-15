@@ -1,12 +1,9 @@
 /**
- * Anthropic API service for LLM integration
+ * LLM API service for multi-provider integration
+ * Supports Anthropic, OpenAI, and Google Gemini through Vercel AI SDK
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import {
-	API_MAX_RETRIES,
-	API_RETRY_BASE_DELAY,
-	API_RETRY_MAX_DELAY,
 	BACKGROUND_MAX_LENGTH,
 	CORE_VALUES_MAX,
 	CORE_VALUES_MIN,
@@ -28,124 +25,10 @@ import type {
 	StatementWithAgent,
 } from "../types/database";
 import { parseAgentPersona } from "../utils/database";
+import { callLLM } from "./llm";
 
-interface AnthropicRequest {
-	model: string;
-	max_tokens: number;
-	system?: string;
-	messages: Array<{ role: "user" | "assistant"; content: string }>;
-}
-
-/**
- * API Error with rate limit information
- */
-export class AnthropicAPIError extends Error {
-	constructor(
-		message: string,
-		public status?: number,
-		public retryAfter?: number,
-	) {
-		super(message);
-		this.name = "AnthropicAPIError";
-	}
-}
-
-/**
- * Check if error is a rate limit error (429)
- */
-export function isRateLimitError(error: unknown): error is AnthropicAPIError {
-	return error instanceof AnthropicAPIError && error.status === 429;
-}
-
-/**
- * Calculate exponential backoff delay with jitter
- */
-function calculateBackoffDelay(attempt: number): number {
-	const exponentialDelay = API_RETRY_BASE_DELAY ** attempt;
-	const jitter = Math.random() * 1000; // 0-1000ms jitter
-	const delayMs = Math.min(exponentialDelay * 1000, API_RETRY_MAX_DELAY * 1000) + jitter;
-	return delayMs;
-}
-
-/**
- * Sleep for specified milliseconds
- */
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Call Anthropic API using the official SDK with retry logic
- */
-export async function callAnthropicAPI(
-	env: Bindings,
-	request: AnthropicRequest,
-): Promise<{ content: string }> {
-	const client = new Anthropic({
-		apiKey: env.ANTHROPIC_API_KEY,
-	});
-
-	let attempt = 0;
-
-	while (attempt < API_MAX_RETRIES) {
-		try {
-			const message = await client.messages.create({
-				model: request.model,
-				max_tokens: request.max_tokens,
-				system: request.system,
-				messages: request.messages,
-			});
-
-			// Extract text content from the first content block
-			const firstContent = message.content[0];
-			if (firstContent.type === "text") {
-				return { content: firstContent.text };
-			}
-
-			throw new Error("Unexpected response format: first content block is not text");
-		} catch (error) {
-			attempt++;
-
-			// Check if it's a rate limit error
-			if (error instanceof Anthropic.APIError && error.status === 429) {
-				console.warn(`Rate limit hit (attempt ${attempt}/${API_MAX_RETRIES}):`, error.message);
-
-				// Get retry-after from headers if available
-				const retryAfter = error.headers?.["retry-after"];
-				const retryAfterSeconds = retryAfter ? Number.parseInt(retryAfter, 10) : undefined;
-
-				if (attempt < API_MAX_RETRIES) {
-					// Use retry-after if provided, otherwise use exponential backoff
-					const delayMs = retryAfterSeconds
-						? retryAfterSeconds * 1000
-						: calculateBackoffDelay(attempt);
-
-					console.log(`Retrying after ${Math.round(delayMs / 1000)}s...`);
-					await sleep(delayMs);
-					continue;
-				}
-
-				// Max retries reached, throw rate limit error
-				throw new AnthropicAPIError(
-					`Rate limit exceeded after ${API_MAX_RETRIES} retries`,
-					429,
-					retryAfterSeconds,
-				);
-			}
-
-			// Other errors (non-429) should not be retried here
-			if (error instanceof Anthropic.APIError) {
-				throw new AnthropicAPIError(error.message || "Anthropic API error", error.status);
-			}
-
-			// Unknown error
-			throw error;
-		}
-	}
-
-	// Should never reach here
-	throw new Error("Unexpected error in callAnthropicAPI");
-}
+// Re-export for backward compatibility
+export { isRateLimitError, LLMAPIError as AnthropicAPIError } from "./llm";
 
 /**
  * Generate initial persona for a new agent
@@ -175,9 +58,9 @@ export async function generateInitialPersona(
 JSONのみを出力し、他の説明は不要です。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.INITIAL_PERSONA,
+			maxTokens: LLM_TOKEN_LIMITS.INITIAL_PERSONA,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -272,9 +155,9 @@ ${formatAllStatements(allStatements)}
 を含めてください。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.SESSION_SUMMARY,
+			maxTokens: LLM_TOKEN_LIMITS.SESSION_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -364,9 +247,9 @@ ${formatAllStatements(allStatements)}
 JSONのみを出力してください。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL,
-			max_tokens: LLM_TOKEN_LIMITS.JUDGE_VERDICT,
+			maxTokens: LLM_TOKEN_LIMITS.JUDGE_VERDICT,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -464,9 +347,9 @@ JSON形式で出力してください：
 JSONのみを出力してください。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.PERSONA_UPDATE,
+			maxTokens: LLM_TOKEN_LIMITS.PERSONA_UPDATE,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -565,9 +448,9 @@ export async function generateTurnSummary(
 要約テキストのみを出力してください。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.TURN_SUMMARY,
+			maxTokens: LLM_TOKEN_LIMITS.TURN_SUMMARY,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -612,9 +495,9 @@ ${feedback.content}
 方針のテキストのみを出力してください。`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.STRATEGY_GENERATION,
+			maxTokens: LLM_TOKEN_LIMITS.STRATEGY_GENERATION,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -668,9 +551,9 @@ JSON形式で出力してください（他の説明は不要です）：
 { "title": "30文字以内のタイトル", "description": "120文字以内の説明" }`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL,
-			max_tokens: LLM_TOKEN_LIMITS.NEXT_TOPICS,
+			maxTokens: LLM_TOKEN_LIMITS.NEXT_TOPICS,
 			system: systemPrompt,
 			messages: [{ role: "user", content: userPrompt }],
 		});
@@ -729,9 +612,9 @@ export async function generateAgentReflection(
 {"question":"40文字以内","context_summary":"議論でこうだったという背景を80文字以内"}`;
 
 	try {
-		const response = await callAnthropicAPI(env, {
+		const response = await callLLM(env, {
 			model: LLM_MODEL_LIGHT,
-			max_tokens: LLM_TOKEN_LIMITS.AGENT_REFLECTION,
+			maxTokens: LLM_TOKEN_LIMITS.AGENT_REFLECTION,
 			messages: [{ role: "user", content: userPrompt }],
 		});
 
