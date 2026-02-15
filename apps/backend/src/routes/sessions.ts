@@ -357,7 +357,7 @@ publicSessions.openapi(getSessionTurnsRoute, async (c) => {
 
 		// Get turns for this session
 		const turns = await c.env.DB.prepare(
-			`SELECT id, turn_number, status, completed_at
+			`SELECT id, turn_number, status, summary, completed_at
        FROM turns
        WHERE session_id = ?
        ORDER BY turn_number ASC`,
@@ -369,7 +369,7 @@ publicSessions.openapi(getSessionTurnsRoute, async (c) => {
 		const turnsWithStatements = await Promise.all(
 			turns.results.map(async (turn) => {
 				const statements = await c.env.DB.prepare(
-					`SELECT s.id, s.agent_id, s.content, s.created_at, a.name as agent_name
+					`SELECT s.id, s.agent_id, s.content, s.summary, s.created_at, a.name as agent_name
            FROM statements s
            JOIN agents a ON s.agent_id = a.id
            WHERE s.turn_id = ?
@@ -382,11 +382,13 @@ publicSessions.openapi(getSessionTurnsRoute, async (c) => {
 					id: turn.id,
 					turn_number: turn.turn_number,
 					status: turn.status,
+					summary: turn.summary ?? null,
 					statements: statements.results.map((stmt) => ({
 						id: stmt.id,
 						agent_id: stmt.agent_id,
 						agent_name: stmt.agent_name,
 						content: stmt.content,
+						summary: stmt.summary ?? null,
 						created_at: stmt.created_at,
 					})),
 					completed_at: turn.completed_at,

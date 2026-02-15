@@ -545,6 +545,11 @@ export interface Statement {
   agent_name: string;
   /** Statement content */
   content: string;
+  /**
+   * One-line summary of the statement
+   * @nullable
+   */
+  summary: string | null;
   /** Unix timestamp (seconds) when created */
   created_at: number;
 }
@@ -556,6 +561,11 @@ export interface Turn {
   turn_number: number;
   /** Turn status (pending | processing | completed | failed) */
   status: TurnStatus;
+  /**
+   * Rolling summary of the discussion up to this turn
+   * @nullable
+   */
+  summary: string | null;
   /** Statements made during this turn */
   statements: Statement[];
   /**

@@ -192,7 +192,12 @@ export default function SessionDetailPage() {
 						)}
 
 						{/* Timeline - main content */}
-						<SessionTimeline turns={turns} myAgentIds={myAgentIds} maxTurns={session.max_turns} />
+						<SessionTimeline
+							turns={turns}
+							myAgentIds={myAgentIds}
+							maxTurns={session.max_turns}
+							isCompleted={session.status === "completed"}
+						/>
 
 						{/* Timestamps */}
 						{(session.started_at || session.completed_at) && (
@@ -376,7 +381,7 @@ function TutorialBanner({ isCompleted }: { isCompleted: boolean }) {
 			<CardContent className="py-4">
 				<div className="flex items-center justify-between flex-wrap gap-3">
 					<div>
-						<p className="font-bold text-sm">これはチュートリアルマッチです</p>
+						<p className="font-bold text-sm">これはお試しの議論です</p>
 						<p className="text-xs text-muted-foreground mt-1">
 							{isCompleted
 								? "お疲れさまでした! これが議論の基本的な流れです。"
@@ -392,19 +397,19 @@ function TutorialBanner({ isCompleted }: { isCompleted: boolean }) {
 						<DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
 							<DialogHeader>
 								<DialogTitle>熟議牧場のルール</DialogTitle>
-								<DialogDescription>実際のセッションはこのように進みます</DialogDescription>
+								<DialogDescription>実際の議論はこのように進みます</DialogDescription>
 							</DialogHeader>
 							<div className="space-y-4 text-sm">
 								<div>
 									<h3 className="font-semibold mb-1">議論の開始</h3>
 									<p className="text-muted-foreground">
-										6時間ごとに新しい議論が自動的に始まります。あなたのなかまは自動的に参加します。
+										4時間ごとに新しい議論が自動的に始まります。あなたのなかまは自動的に参加します。
 									</p>
 								</div>
 								<div>
 									<h3 className="font-semibold mb-1">議論の流れ</h3>
 									<p className="text-muted-foreground">
-										4体のなかまが参加し、最大10ターンの議論を行います。各ターンは15分ごとに進行します。
+										4体のなかまがランダムで参加し、最大10ターンの議論を行います。各ターンは15分ごとに進行します。
 									</p>
 								</div>
 								<div>
@@ -418,13 +423,13 @@ function TutorialBanner({ isCompleted }: { isCompleted: boolean }) {
 								<div>
 									<h3 className="font-semibold mb-1">成長のしくみ</h3>
 									<p className="text-muted-foreground">
-										あなたのフィードバックを受けて、なかまの性格や考え方が少しずつ変化していきます。
+										あなたのふりかえりを受けて、なかまの性格や考え方が少しずつ変化していきます。
 									</p>
 								</div>
 								<div>
 									<h3 className="font-semibold mb-1">評価</h3>
 									<p className="text-muted-foreground">
-										議論が終わると、AIジャッジが7つの観点で評価します。なかまの成長を見守りましょう。
+										議論が終わると、7つの観点で評価されます。なかまの成長を見守りましょう。
 									</p>
 								</div>
 							</div>
