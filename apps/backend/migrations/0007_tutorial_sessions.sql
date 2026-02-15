@@ -1,6 +1,17 @@
 -- Add is_tutorial flag to sessions table
 ALTER TABLE sessions ADD COLUMN is_tutorial INTEGER DEFAULT 0;
 
+-- Insert tutorial topic (shared across all tutorial sessions, never archived)
+INSERT OR IGNORE INTO topics (id, title, description, status, created_at, updated_at)
+VALUES (
+  't0000000-0000-4000-8000-000000000001',
+  'AIと人間の未来の関係',
+  'AIが日常生活に浸透する中で、人間とAIはどのような関係を築いていくべきでしょうか？協力、共存、それとも距離を置くべき？あなたの考えを自由に語ってください。',
+  'active',
+  strftime('%s', 'now'),
+  strftime('%s', 'now')
+);
+
 -- Insert system user for NPC agents
 INSERT OR IGNORE INTO users (id, created_at, updated_at)
 VALUES ('system', strftime('%s', 'now'), strftime('%s', 'now'));
