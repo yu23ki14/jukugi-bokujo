@@ -14,12 +14,12 @@ database_name = "jukugi-bokujo-db"
 database_id = "3d307504-81b8-42c4-8fee-8ff1e0bf9763"
 migrations_dir = "migrations"
 
-# Cron Triggers
+# Cron Triggers (disabled for low-cost operation)
 # - Master Cron: 6 times/day aligned to JST active hours (session generation)
 #   UTC 22,2,6,10,14,18 = JST 7,11,15,19,23,3
 # - Turn Cron: every 15 minutes (turn processing)
-[triggers]
-crons = ["0 22,2,6,10,14,18 * * *", "*/15 * * * *"]
+# [triggers]
+# crons = ["0 22,2,6,10,14,18 * * *", "*/15 * * * *"]
 
 # Cloudflare Queues
 # - Turn Queue: Processes agent statements in parallel with rate limit control
